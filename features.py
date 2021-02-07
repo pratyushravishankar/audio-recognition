@@ -59,10 +59,14 @@ def compute_features(tid):
         features[name, 'max'] = np.max(values, axis=1)
 
     try:
-        filepath = utils.get_audio_path(os.environ.get('AUDIO_DIR'), tid)
-        x, sr = librosa.load(filepath, sr=None, mono=True)  # kaiser_fast
+        print("here", tid)
+        # filepath = utils.get_audio_path(os.environ.get('AUDIO_DIR'), tid)
+        x, sr = librosa.load("./input_audio/test.mp3", sr=None, mono=True)
 
-        f = librosa.feature.zero_crossing_rate(x, frame_length=2048, hop_length=512)
+        # x, sr = librosa.load(filepath, sr=None, mono=True)  # kaiser_fast
+
+        f = librosa.feature.zero_crossing_rate(
+            x, frame_length=2048, hop_length=512)
         feature_stats('zcr', f)
 
         cqt = np.abs(librosa.cqt(x, sr=sr, hop_length=512, bins_per_octave=12,
@@ -106,36 +110,41 @@ def compute_features(tid):
     except Exception as e:
         print('{}: {}'.format(tid, repr(e)))
 
-    return features
+    return features.to_frame().transpose()
 
 
 def main():
-    tracks = utils.load('tracks.csv')
+    tracks = utils.load('data/fma_metadata/tracks.csv')
     features = pd.DataFrame(index=tracks.index,
                             columns=columns(), dtype=np.float32)
 
     # More than usable CPUs to be CPU bound, not I/O bound. Beware memory.
-    nb_workers = int(1.5 * len(os.sched_getaffinity(0)))
+    # nb_workers = int(1.5 * len(os.sched_getaffinity(0)))
+    nb_workers = int(1.5 * os.cpu_count())
 
     # Longest is ~11,000 seconds. Limit processes to avoid memory errors.
-    table = ((5000, 1), (3000, 3), (2000, 5), (1000, 10), (0, nb_workers))
-    for duration, nb_workers in table:
-        print('Working with {} processes.'.format(nb_workers))
+    # table = ((5000, 1), (3000, 3), (2000, 5), (1000, 10), (0, nb_workers))
+    # for duration, nb_workers in table:
+    #     print('Working with {} processes.'.format(nb_workers))
 
-        tids = tracks[tracks['track', 'duration'] >= duration].index
-        tracks.drop(tids, axis=0, inplace=True)
+    #     tids = tracks[tracks['track', 'duration'] >= duration].index
+    #     print("TIDS: ", tids)
+    #     tracks.drop(tids, axis=0, inplace=True)
 
-        pool = multiprocessing.Pool(nb_workers)
-        it = pool.imap_unordered(compute_features, tids)
+    #     pool = multiprocessing.Pool(nb_workers)
+    #     it = pool.imap_unordered(compute_features, tids)
 
-        for i, row in enumerate(tqdm(it, total=len(tids))):
-            features.loc[row.name] = row
+    #     for i, row in enumerate(tqdm(it, total=len(tids))):
+    #         features.loc[row.name] = row
 
-            if i % 1000 == 0:
-                save(features, 10)
+    #         if i % 1000 == 0:
+    #             save(features, 10)
 
-    save(features, 10)
-    test(features, 10)
+    # save(features, 10)
+    # test(features, 10)
+
+    print(compute_features(2).shape)
+    print(compute_features(2))
 
 
 def save(features, ndigits):

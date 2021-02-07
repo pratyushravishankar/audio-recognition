@@ -41,9 +41,12 @@ class FreeMusicArchive:
         return tracks, artists, date_created
 
     def _get_data(self, dataset, fma_id, fields=None):
+        print("HERE")
         url = self.BASE_URL + dataset + 's.json?'
+        print("nowHERE")
         url += dataset + '_id=' + str(fma_id) + '&api_key=' + self.api_key
-        # print(url)
+        print("thenHERE")
+        print(url)
         r = requests.get(url)
         r.raise_for_status()
         if r.json()['errors']:
@@ -175,7 +178,7 @@ class Genres:
                 roots.append(gid)
             elif parent not in self.df.index:
                 msg = '{} ({}) has parent {} which is missing'.format(
-                        gid, title, parent)
+                    gid, title, parent)
                 raise RuntimeError(msg)
         return roots
 
@@ -211,11 +214,11 @@ def load(filepath):
         SUBSETS = ('small', 'medium', 'large')
         try:
             tracks['set', 'subset'] = tracks['set', 'subset'].astype(
-                    'category', categories=SUBSETS, ordered=True)
+                'category', categories=SUBSETS, ordered=True)
         except ValueError:
             # the categories and ordered arguments were removed in pandas 0.25
             tracks['set', 'subset'] = tracks['set', 'subset'].astype(
-                     pd.CategoricalDtype(categories=SUBSETS, ordered=True))
+                pd.CategoricalDtype(categories=SUBSETS, ordered=True))
 
         COLUMNS = [('track', 'genre_top'), ('track', 'license'),
                    ('album', 'type'), ('album', 'information'),
@@ -230,14 +233,12 @@ def get_audio_path(audio_dir, track_id):
     """
     Return the path to the mp3 given the directory where the audio is stored
     and the track ID.
-
     Examples
     --------
     >>> import utils
     >>> AUDIO_DIR = os.environ.get('AUDIO_DIR')
     >>> utils.get_audio_path(AUDIO_DIR, 2)
     '../data/fma_small/000/000002.mp3'
-
     """
     tid_str = '{:06d}'.format(track_id)
     return os.path.join(audio_dir, tid_str[:3], tid_str + '.mp3')
@@ -297,7 +298,8 @@ class FfmpegLoader(RawAudioLoader):
             command.extend(['-ar', str(self.sampling_rate)])
         command.append('-')
         # 30s at 44.1 kHz ~= 1.3e6
-        proc = sp.run(command, stdout=sp.PIPE, bufsize=10**7, stderr=sp.DEVNULL, check=True)
+        proc = sp.run(command, stdout=sp.PIPE, bufsize=10 **
+                      7, stderr=sp.DEVNULL, check=True)
 
         return np.fromstring(proc.stdout, dtype="int16")
 
@@ -340,7 +342,8 @@ def build_sample_loader(audio_dir, Y, loader):
 
                 # print(self.tids, self.batch_foremost.value, batch_current, self.tids[batch_current], batch_size)
                 # print('queue', self.tids[batch_current], batch_size)
-                tids = np.array(self.tids[batch_current:batch_current+batch_size])
+                tids = np.array(
+                    self.tids[batch_current:batch_current+batch_size])
 
             batch_size = 0
             for tid in tids:
@@ -350,7 +353,8 @@ def build_sample_loader(audio_dir, Y, loader):
                     self.Y[batch_size] = Y.loc[tid]
                     batch_size += 1
                 except Exception as e:
-                    print("\nIgnoring " + audio_path +" (error: " + str(e) +").")
+                    print("\nIgnoring " + audio_path +
+                          " (error: " + str(e) + ").")
 
             with self.lock2:
                 while (batch_current - self.batch_rearmost.value) % self.tids.size > self.batch_size:
