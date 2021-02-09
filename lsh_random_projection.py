@@ -9,7 +9,10 @@ import pandas as pd
 import utils
 import IPython.display as ipd
 import matplotlib
+
 import features as ft
+import heapq
+from sklearn.metrics.pairwise import pairwise_distances
 
 matplotlib.use('TkAgg')
 fma = utils.FreeMusicArchive(os.environ.get('FMA_KEY'))
@@ -49,12 +52,73 @@ class LSH:
         for table in self.hash_tables:
             table.add(inp_vec)
 
-    def get(self, inp_vec):
-        # insert further logic
-        res = []
+    def get(self, inp_vec, collision_ratio=1):
+
+        collisions_dict = {}
         for table in self.hash_tables:
-            res.append(table.get(inp_vec))
-        return res
+
+            table_matches = table.get(inp_vec)
+            for point in table_matches:
+
+                if point not in collisions_dict:
+                    collisions_dict[point] = 0
+                collisions_dict[point] = collisions_dict[point] + 1
+
+        query_matches = []
+
+        for c in collisions_dict:
+            if collisions_dict[c] >= self.num_tables * collision_ratio:
+                query_matches.append(c)
+
+        # print("QUERY MATACHES ")
+        # print(query_matches)
+        # return
+
+        return self.get_top_k(inp_vec, query_matches)
+
+        # # insert further logic
+        # res = []
+        # for table in self.hash_tables:
+        #     res.append(table.get(inp_vec))
+        # return res
+
+    def get_top_k(self, inp_vec, candidates, k=20):
+
+        # top_k = []
+        # for c in candidates:
+
+        #     dist = self.get_distance(inp_vec, c)
+
+        #     heapq.heappush(top_k, dist)
+        #     if (len(top_k) > k):
+        #         heapq.heappop()
+
+        # return
+        # return genres of top k
+        #
+
+        # candidates = ids
+
+        candidate_list = features.ix[candidates]
+
+        ground_truths = tracks['track']['genre_top'].ix[candidates]
+
+        print("Candiates list")
+        print(candidate_list.shape)
+
+        print("Input list")
+        print(inp_vec.shape)
+
+        distance = pairwise_distances(
+            candidate_list, inp_vec, metric='cosine').flatten()
+
+        nearest_neighbours = pd.DataFrame({'id': candidates, 'genre': ground_truths, 'distance': distance}).sort_values(
+            'distance').reset_index(drop=True)
+
+        candidate_set_labels = nearest_neighbours.sort_values(
+            by=['distance'], ascending=True)['genre']
+
+        return candidate_set_labels
 
 
 class HashTable:
@@ -70,10 +134,16 @@ class HashTable:
         # print("KEY", keys)
 
         track_hashes = keys.join(tracks['track'])
+        # print(track_hashes.head())
+        # return
         for track in track_hashes.itertuples():
             # print("track ", track)
+
+            # hash
             key = track[1]
-            val = track[9]
+
+            # song_id
+            val = track[0]
 
             # print("key", key, " val: ", val)
 
@@ -81,9 +151,9 @@ class HashTable:
                 self.hash_table[key] = []
             self.hash_table[key].append(val)
 
-        for i in self.hash_table:
-            vals = self.hash_table[i]
-            self.bar_chart(i, vals)
+        # for i in self.hash_table:
+        #     vals = self.hash_table[i]
+        #     self.bar_chart(i, vals)
 
     def get_keys(self, inp_vec):
         # print("INPUT ", inp_vec)
@@ -98,17 +168,20 @@ class HashTable:
 
         res = []
         bins = self.get_keys(inp_vec)
-        print("TINIES keyeys")
-        print(bins)
+        # print("TINIES keyeys")
+        # print(bins)
+
+        # modify to get first row
         for binquery in bins.itertuples():
-            print("ACC BIN: ", binquery)
+            # print("ACC BIN: ", binquery)
             query_bin = binquery[1]
             if query_bin in self.hash_table:
-                res.append(self.hash_table[query_bin])
-                print("ACC MAJORITY")
-                print(self.majority(self.hash_table[query_bin]))
+                return self.hash_table[query_bin]
+                # print("ACC MAJORITY")
+                # print(self.majority(self.hash_table[query_bin]))
             else:
-                res.append("NULL")
+                # res.append("NULL")
+                return []
 
         return res
 
@@ -152,11 +225,15 @@ class HashTable:
                   " total: ", count, " \n \n \n")
 
 
-lsh = LSH(1, 25, 518)
+lsh = LSH(10, 25, 518)
 lsh.add(features)
 
 query_df = ft.compute_features(2)
 
-res = lsh.get(query_df)
-# print("THE RESPONSE")
-# print(res)
+# print("MY FEATURES")
+# print(query_df)
+# print("THEIRS")
+# print(features.iloc[1:2])
+res = lsh.get(features.iloc[1:2])
+print("THE RESPONSE")
+print(res)
