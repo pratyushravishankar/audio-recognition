@@ -55,12 +55,12 @@ class LSH:
         for table in self.hash_tables:
             table.add(inp_vec)
 
-    def get(self, inp_vec, collision_ratio=0.5):
+    def get(self, inp_vec, collision_ratio=0.5, probe=False):
 
         collisions_dict = {}
         for table in self.hash_tables:
 
-            table_matches = table.get(inp_vec)
+            table_matches = table.get(inp_vec, probe)
             for point in table_matches:
 
                 if point not in collisions_dict:
@@ -129,8 +129,6 @@ class HashTable:
         bin_bits = inp_vec.dot(self.projections) >= 0
 
         if (is_probe):
-            # append each new probed bins
-            print("SHOULDN't BE PRINTED!")
             print("BEFORE")
             print(len(bin_bits))
             bin_bits = self.get_probe_bins(bin_bits)
@@ -140,93 +138,75 @@ class HashTable:
 
         powers_of_two = 1 << np.arange(self.hash_size - 1, -1, step=-1)
         decimal_keys = bin_bits.dot(powers_of_two)
-        print(decimal_keys)
         return decimal_keys
 
-    def get_probe_bins(self, bin_indices_bits, search_radius=2):
+    def get_keys_cormode(self, inp_vec, k=2):
 
-        print(">>>>", bin_indices_bits, " >>>>>")
+        print("AT CORMODE!!!!!")
+        bin_bits = inp_vec.dot(self.projections)
+# get top k columns for each row
+# for each row:
+    # create new key with flipped bit of one k coluns
+
+        probed_keys = []
+
+        for row in bin_bits.values:
+
+            abs_idxs = [(abs(val), idx) for idx, val in enumerate(row)]
+
+            smallest = heapq.nsmallest(k, abs_idxs)
+
+            print("row ", row)
+            print("smallest ", smallest)
+
+            probed_keys.append(row)
+            for pair in smallest:
+                idx = pair[1]
+                row_copy = row.copy()
+                row_copy[idx] = row_copy[idx] * -1
+                probed_keys.append(row_copy)
+
+        probed_projections = pd.DataFrame(
+            np.array(probed_keys), columns=bin_bits.columns)
+        probed_bin_bits = (probed_projections) >= 0
+
+        powers_of_two = 1 << np.arange(self.hash_size - 1, -1, step=-1)
+        decimal_keys = probed_bin_bits.dot(powers_of_two)
+        return decimal_keys
 
 
-#         # orig_bins_len = len(bin_indices_bits)
+# return key
+
+        # print(bin_bits)
+#
+
+
+    def get_probe_bins(self, bin_indices_bits, search_radius=1):
 
         for orig_bin in bin_indices_bits.values:
-            # print("each one")
-            # print(orig_bin)
-
-            #             j = 0
 
             p_bins = []
 #
             for perturbed_idxs in combinations(range(self.hash_size), search_radius):
 
-                # print("ITer:", j)
-                # j = j + 1
-
                 idxs = list(perturbed_idxs)
 
                 perturbed_query = orig_bin.copy()
 
-#                 # print("perturbed :", perturbed_query, ">>> ")
                 for idx in idxs:
                     perturbed_query[idx] = not perturbed_query[idx]
 
                 p_bins.append(perturbed_query)
 
-        # print("p bins")
-
-        # p_bins_np = np.array([np.array(x) for x in p_bins])
-
-        # print(type(bin_indices_bits))
         return bin_indices_bits.append(pd.DataFrame(np.array(p_bins), columns=bin_indices_bits.columns))
 
-        # # print("BIN INDICES BITS")
-
-        # # for rad in range(search_radius + 1):
-
-        # #     for perturb_idxs in combinations(range(self.hash_size), rad):
-
-        # #         idxs = list(perturb_idxs)
-
-        # #         perturbed_query = bin_indices_bits.copy()
-        # #         perturbed_query[idxs] = np.logical_not(
-        # #             perturbed_query[idxs])
-
-        # #         bin_indices_bits = pd.concat([bin_indices_bits, perturbed_query],
-        # #                                      ignore_index=True)
-
-        # #         # powers_of_two = 1 << np.arange(self.hash_size - 1, -1, step=-1)
-
-        # #         # nearby = perturbed_query.dot(powers_of_two)
-
-        # #         # print(nearby)
-
-        # #         # print("PERQTUBERD")
-
-        # # # print("MY QUERIES BITCHES ", bin_indices_bits)
-        # # return bin_indices_bits
-
-        # # orig_bin = np.tolist(bin_indices_bits
-        # orig_bin = bin_indices_bits.values.tolist()[0]
-        # # print(orig_bin)
-        # bins = [orig_bin]
-        # # org_bin = [True, True, True, True, True, True]
-        # for idxs in combinations(range(self.hash_size), 1):
-        #     perturbed_idxs = list(idxs)
-        #     perturbed_bin = orig_bin.copy()
-
-        #     for idx in perturbed_idxs:
-        #         perturbed_bin[idx] = not perturbed_bin[idx]
-
-        # # print(idxs, " ", perturbed_bin)
-        #     bins.append(perturbed_bin)
-        # print(len(bins))
-        # return np.asarray(bins)
-
-    def get(self, inp_vec):
+    def get(self, inp_vec, probe):
 
         res = []
-        bins = self.get_keys(inp_vec, True)
+        if probe:
+            bins = self.get_keys_cormode(inp_vec)
+        else:
+            bins = self.get_keys(inp_vec, False)
 
         for key in bins:
 
@@ -330,11 +310,14 @@ lsh.add(features['mfcc'])
 # print("LISZT")
 # print(res_six)
 
-dummy = lsh.get(features.iloc[1:2]['mfcc'])
+dummy = lsh.get(features.iloc[1:2]['mfcc'], probe=False)
 print("DUMMY - second song")
 print(dummy)
 
 
+cormode = lsh.get(features.iloc[1:2]['mfcc'], probe=True)
+print("DUMMY - cormode!!!! song")
+print(cormode)
 # res_eight = lsh.get(second)
 # print("my features - second song")
 # print(res_eight)
