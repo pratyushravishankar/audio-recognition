@@ -1,4 +1,5 @@
 # import matplotlib.pyplot as plt
+from itertools import combinations
 from sklearn.preprocessing import Normalizer
 from collections import defaultdict
 import scipy.io
@@ -35,6 +36,8 @@ genres = utils.load('data/fma_metadata/genres.csv')
 features = utils.load('data/fma_metadata/features.csv')
 echonest = utils.load('data/fma_metadata/echonest.csv')
 
+# features = ''
+
 n_vectors = 16
 
 
@@ -52,7 +55,7 @@ class LSH:
         for table in self.hash_tables:
             table.add(inp_vec)
 
-    def get(self, inp_vec, collision_ratio=1):
+    def get(self, inp_vec, collision_ratio=0.5):
 
         collisions_dict = {}
         for table in self.hash_tables:
@@ -70,55 +73,31 @@ class LSH:
             if collisions_dict[c] >= self.num_tables * collision_ratio:
                 query_matches.append(c)
 
-        # print("QUERY MATACHES ")
-        # print(query_matches)
-        # return
-
         return self.get_top_k(inp_vec, query_matches)
-
-        # # insert further logic
-        # res = []
-        # for table in self.hash_tables:
-        #     res.append(table.get(inp_vec))
-        # return res
 
     def get_top_k(self, inp_vec, candidates, k=20):
 
-        # top_k = []
-        # for c in candidates:
+        if not candidates:
+            return None
 
-        #     dist = self.get_distance(inp_vec, c)
-
-        #     heapq.heappush(top_k, dist)
-        #     if (len(top_k) > k):
-        #         heapq.heappop()
-
-        # return
-        # return genres of top k
-        #
-
-        # candidates = ids
-
-        candidate_list = features.ix[candidates]
+        candidate_list = features.ix[candidates]['mfcc']
 
         ground_truths = tracks['track']['genre_top'].ix[candidates]
 
-        print("Candiates list")
-        print(candidate_list.shape)
-
-        print("Input list")
-        print(inp_vec.shape)
-
         distance = pairwise_distances(
-            candidate_list, inp_vec, metric='cosine').flatten()
+            candidate_list, inp_vec, metric='euclidean').flatten()
 
         nearest_neighbours = pd.DataFrame({'id': candidates, 'genre': ground_truths, 'distance': distance}).sort_values(
             'distance').reset_index(drop=True)
 
         candidate_set_labels = nearest_neighbours.sort_values(
-            by=['distance'], ascending=True)['genre']
+            by=['distance'], ascending=True)
 
-        return candidate_set_labels
+        non_null = candidate_set_labels[candidate_set_labels['genre'].notnull(
+        )]
+
+        top = min(k, len(non_null))
+        return non_null[:top]
 
 
 class HashTable:
@@ -129,60 +108,131 @@ class HashTable:
         self.projections = np.random.randn(inp_dimensions, hash_size)
 
     def add(self, inp_vec):
-        # bin_indices_bits = inp_vec.dot(self.projections) >= 0
-        keys = self.get_keys(inp_vec)
-        # print("KEY", keys)
 
-        track_hashes = keys.join(tracks['track'])
-        # print(track_hashes.head())
-        # return
+        keys = self.get_keys(inp_vec, False)
+        keys_df = keys.to_frame(name="idx")
+        track_hashes = keys_df.join(tracks['track'])
+
         for track in track_hashes.itertuples():
-            # print("track ", track)
 
             # hash
             key = track[1]
 
             # song_id
             val = track[0]
-
-            # print("key", key, " val: ", val)
-
             if key not in self.hash_table:
                 self.hash_table[key] = []
             self.hash_table[key].append(val)
 
-        # for i in self.hash_table:
-        #     vals = self.hash_table[i]
-        #     self.bar_chart(i, vals)
+    def get_keys(self, inp_vec, is_probe):
 
-    def get_keys(self, inp_vec):
-        # print("INPUT ", inp_vec)
-        bin_indices_bits = inp_vec.dot(self.projections) >= 0
+        bin_bits = inp_vec.dot(self.projections) >= 0
+
+        if (is_probe):
+            # append each new probed bins
+            print("SHOULDN't BE PRINTED!")
+            print("BEFORE")
+            print(len(bin_bits))
+            bin_bits = self.get_probe_bins(bin_bits)
+            print("AFTER")
+            print(len(bin_bits))
+            # print(bin_bits)
+
         powers_of_two = 1 << np.arange(self.hash_size - 1, -1, step=-1)
-        bin_indices = bin_indices_bits.dot(powers_of_two)
-        # print(bin_indices)
-        # return str(bin_indices)
-        return bin_indices.to_frame(name="idx")
+        decimal_keys = bin_bits.dot(powers_of_two)
+        print(decimal_keys)
+        return decimal_keys
+
+    def get_probe_bins(self, bin_indices_bits, search_radius=2):
+
+        print(">>>>", bin_indices_bits, " >>>>>")
+
+
+#         # orig_bins_len = len(bin_indices_bits)
+
+        for orig_bin in bin_indices_bits.values:
+            # print("each one")
+            # print(orig_bin)
+
+            #             j = 0
+
+            p_bins = []
+#
+            for perturbed_idxs in combinations(range(self.hash_size), search_radius):
+
+                # print("ITer:", j)
+                # j = j + 1
+
+                idxs = list(perturbed_idxs)
+
+                perturbed_query = orig_bin.copy()
+
+#                 # print("perturbed :", perturbed_query, ">>> ")
+                for idx in idxs:
+                    perturbed_query[idx] = not perturbed_query[idx]
+
+                p_bins.append(perturbed_query)
+
+        # print("p bins")
+
+        # p_bins_np = np.array([np.array(x) for x in p_bins])
+
+        # print(type(bin_indices_bits))
+        return bin_indices_bits.append(pd.DataFrame(np.array(p_bins), columns=bin_indices_bits.columns))
+
+        # # print("BIN INDICES BITS")
+
+        # # for rad in range(search_radius + 1):
+
+        # #     for perturb_idxs in combinations(range(self.hash_size), rad):
+
+        # #         idxs = list(perturb_idxs)
+
+        # #         perturbed_query = bin_indices_bits.copy()
+        # #         perturbed_query[idxs] = np.logical_not(
+        # #             perturbed_query[idxs])
+
+        # #         bin_indices_bits = pd.concat([bin_indices_bits, perturbed_query],
+        # #                                      ignore_index=True)
+
+        # #         # powers_of_two = 1 << np.arange(self.hash_size - 1, -1, step=-1)
+
+        # #         # nearby = perturbed_query.dot(powers_of_two)
+
+        # #         # print(nearby)
+
+        # #         # print("PERQTUBERD")
+
+        # # # print("MY QUERIES BITCHES ", bin_indices_bits)
+        # # return bin_indices_bits
+
+        # # orig_bin = np.tolist(bin_indices_bits
+        # orig_bin = bin_indices_bits.values.tolist()[0]
+        # # print(orig_bin)
+        # bins = [orig_bin]
+        # # org_bin = [True, True, True, True, True, True]
+        # for idxs in combinations(range(self.hash_size), 1):
+        #     perturbed_idxs = list(idxs)
+        #     perturbed_bin = orig_bin.copy()
+
+        #     for idx in perturbed_idxs:
+        #         perturbed_bin[idx] = not perturbed_bin[idx]
+
+        # # print(idxs, " ", perturbed_bin)
+        #     bins.append(perturbed_bin)
+        # print(len(bins))
+        # return np.asarray(bins)
 
     def get(self, inp_vec):
 
         res = []
-        bins = self.get_keys(inp_vec)
-        # print("TINIES keyeys")
-        # print(bins)
+        bins = self.get_keys(inp_vec, True)
 
-        # modify to get first row
-        for binquery in bins.itertuples():
-            # print("ACC BIN: ", binquery)
-            query_bin = binquery[1]
-            if query_bin in self.hash_table:
-                return self.hash_table[query_bin]
-                # print("ACC MAJORITY")
-                # print(self.majority(self.hash_table[query_bin]))
-            else:
-                # res.append("NULL")
-                return []
+        for key in bins:
 
+            if key in self.hash_table:
+                # return self.hash_table[key]
+                res.extend(self.hash_table[key])
         return res
 
     def majority(self, bin):
@@ -225,15 +275,66 @@ class HashTable:
                   " total: ", count, " \n \n \n")
 
 
-lsh = LSH(10, 25, 518)
-lsh.add(features)
+lsh = LSH(1, 25, 140)
+lsh.add(features['mfcc'])
 
-query_df = ft.compute_features(2)
+# query_df = ft.compute_features(2)
+
+
+# kate_nash_10s = ft.compute_features("./input_audio/kate_nash_10s.mp3")
+# kate_nash_5s = ft.compute_features("./input_audio/kate_nash_5s.mp3")
+# tinie = ft.compute_features("./input_audio/tinie.mp3")
+# kate_nash_full = ft.compute_features("./input_audio/kate_nash_full.mp3")
+# ariana_grande = ft.compute_features("./input_audio/ariana-grande.mp3")
+# ludovico = ft.compute_features("./input_audio/ludovico_einaudi.mp3")
+# liszt = ft.compute_features("./input_audio/franz_list.mp3")
+# second = ft.compute_features("./input_audio/test.mp3")
+
+# print("KATE NASHSES")
+# print(kate_nash_10s)
+# print("5sssss")
+# print(kate_nash_5s)
+# print("kate_nash_full")
+# print(kate_nash_full)
+# print("tinie")
+# print(tinie)
 
 # print("MY FEATURES")
 # print(query_df)
 # print("THEIRS")
 # print(features.iloc[1:2])
-res = lsh.get(features.iloc[1:2])
-print("THE RESPONSE")
-print(res)
+
+
+# res = lsh.get(kate_nash_10s)
+# print("KATE_NASH 10s")
+# print(res)
+
+# res_two = lsh.get(kate_nash_5s)
+# print("KATE_NASH 5s")
+# print(res_two)
+
+# res_three = lsh.get(kate_nash_full)
+# print("KATE_NASH FULL ")
+# print(res_three)
+
+
+# res_four = lsh.get(ariana_grande)
+# print("ARIANA ")
+# print(res_four)
+
+# res_five = lsh.get(ludovico)
+# print("LUDOVICO")
+# print(res_five)
+
+# res_six = lsh.get(liszt)
+# print("LISZT")
+# print(res_six)
+
+dummy = lsh.get(features.iloc[1:2]['mfcc'])
+print("DUMMY - second song")
+print(dummy)
+
+
+# res_eight = lsh.get(second)
+# print("my features - second song")
+# print(res_eight)

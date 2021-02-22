@@ -42,9 +42,9 @@ def columns():
     return columns.sort_values()
 
 
-def compute_features(tid):
+def compute_features(path):
 
-    features = pd.Series(index=columns(), dtype=np.float32, name=tid)
+    features = pd.Series(index=columns(), dtype=np.float32, name="Features")
 
     # Catch warnings as exceptions (audioread leaks file descriptors).
     warnings.filterwarnings('error', module='librosa')
@@ -59,9 +59,9 @@ def compute_features(tid):
         features[name, 'max'] = np.max(values, axis=1)
 
     try:
-        print("here", tid)
+        # print("here", tid)
         # filepath = utils.get_audio_path(os.environ.get('AUDIO_DIR'), tid)
-        x, sr = librosa.load("./input_audio/test.mp3", sr=None, mono=True)
+        x, sr = librosa.load(path, sr=None, mono=True)
 
         # x, sr = librosa.load(filepath, sr=None, mono=True)  # kaiser_fast
 
@@ -108,7 +108,7 @@ def compute_features(tid):
         feature_stats('mfcc', f)
 
     except Exception as e:
-        print('{}: {}'.format(tid, repr(e)))
+        print('{}: {}'.format("5", repr(e)))
 
     return features.to_frame().transpose()
 
@@ -143,8 +143,8 @@ def main():
     # save(features, 10)
     # test(features, 10)
 
-    print(compute_features(2).shape)
-    print(compute_features(2))
+    # print(compute_features(2).shape)
+    # print(compute_features(2))
 
 
 def save(features, ndigits):
