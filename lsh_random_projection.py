@@ -55,12 +55,12 @@ class LSH:
         for table in self.hash_tables:
             table.add(inp_vec)
 
-    def get(self, inp_vec, collision_ratio=0.5, probe=False):
+    def get(self, inp_vec, collision_ratio=0.5, probeType="step-wise"):
 
         collisions_dict = {}
         for table in self.hash_tables:
 
-            table_matches = table.get(inp_vec, probe)
+            table_matches = table.get(inp_vec, probeType)
             for point in table_matches:
 
                 if point not in collisions_dict:
@@ -81,6 +81,9 @@ class LSH:
             return None
 
         candidate_list = features.ix[candidates]['mfcc']
+
+        # print("CANdidate list", candidate_list)
+        # print(candidate_list)
 
         ground_truths = tracks['track']['genre_top'].ix[candidates]
 
@@ -109,9 +112,19 @@ class HashTable:
 
     def add(self, inp_vec):
 
-        keys = self.get_keys(inp_vec, False)
+        keys = self.get_keys(inp_vec, is_probe=False)
+
         keys_df = keys.to_frame(name="idx")
+
         track_hashes = keys_df.join(tracks['track'])
+
+        # TODO:// flip bits for dataset not working due to join
+
+        # print(tracks.head())
+        # print(tracks['track'].head())
+        # track_hashes = keys_df.merge(
+        #     tracks['track'], left_on='idx', right_index=True)
+        # # print(track_hashes)
 
         for track in track_hashes.itertuples():
 
@@ -129,25 +142,21 @@ class HashTable:
         bin_bits = inp_vec.dot(self.projections) >= 0
 
         if (is_probe):
-            print("BEFORE")
-            print(len(bin_bits))
+            # print("BEFORE")
+            # print(len(bin_bits))
             bin_bits = self.get_probe_bins(bin_bits)
-            print("AFTER")
-            print(len(bin_bits))
+            # print("AFTER")
+            # print(len(bin_bits))
             # print(bin_bits)
 
         powers_of_two = 1 << np.arange(self.hash_size - 1, -1, step=-1)
         decimal_keys = bin_bits.dot(powers_of_two)
         return decimal_keys
 
-    def get_keys_cormode(self, inp_vec, k=2):
+    def get_keys_cormode(self, inp_vec, k=8):
 
-        print("AT CORMODE!!!!!")
+        # print("AT CORMODE!!!!!")
         bin_bits = inp_vec.dot(self.projections)
-# get top k columns for each row
-# for each row:
-    # create new key with flipped bit of one k coluns
-
         probed_keys = []
 
         for row in bin_bits.values:
@@ -155,10 +164,6 @@ class HashTable:
             abs_idxs = [(abs(val), idx) for idx, val in enumerate(row)]
 
             smallest = heapq.nsmallest(k, abs_idxs)
-
-            print("row ", row)
-            print("smallest ", smallest)
-
             probed_keys.append(row)
             for pair in smallest:
                 idx = pair[1]
@@ -190,7 +195,7 @@ class HashTable:
             for perturbed_idxs in combinations(range(self.hash_size), search_radius):
 
                 idxs = list(perturbed_idxs)
-
+                print("pertubrs ", idxs)
                 perturbed_query = orig_bin.copy()
 
                 for idx in idxs:
@@ -200,11 +205,16 @@ class HashTable:
 
         return bin_indices_bits.append(pd.DataFrame(np.array(p_bins), columns=bin_indices_bits.columns))
 
-    def get(self, inp_vec, probe):
+    def get(self, inp_vec, probeType):
 
         res = []
-        if probe:
+        if probeType == "step-wise":
+            print("step -wise!!!")
+            bins = self.get_keys(inp_vec, True)
+        elif probeType == "bit-flip":
+            print("bit-flip!!!")
             bins = self.get_keys_cormode(inp_vec)
+            # print("BINS >>> ", bins)
         else:
             bins = self.get_keys(inp_vec, False)
 
@@ -306,18 +316,28 @@ lsh.add(features['mfcc'])
 # print("LUDOVICO")
 # print(res_five)
 
-# res_six = lsh.get(liszt)
-# print("LISZT")
+
+# dummy = lsh.get(features.iloc[1:2]['mfcc'], probe=False)
+# print("DUMMY - second song")
+# print(dummy)
+
+
+# liszt = ft.compute_features("./input_audio/franz_list.mp3")
+# res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
+# print("step-wise")
 # print(res_six)
 
-dummy = lsh.get(features.iloc[1:2]['mfcc'], probe=False)
-print("DUMMY - second song")
-print(dummy)
+
+# liszttwo = ft.compute_features("./input_audio/franz_list.mp3")
+# cormode = lsh.get(liszttwo['mfcc'], probeType="bit-flip")
+# print(">> bit-flip")
+# print(cormode)
 
 
-cormode = lsh.get(features.iloc[1:2]['mfcc'], probe=True)
-print("DUMMY - cormode!!!! song")
-print(cormode)
+# liszttwo = ft.compute_features("./input_audio/franz_list.mp3")
+# rand_proj = lsh.get(liszttwo['mfcc'], probeType="rand-proj")
+# print("rand_projj")
+# print(rand_proj)
 
 
 # res_eight = lsh.get(second)
