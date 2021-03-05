@@ -122,9 +122,13 @@ def get_hamming(X, query):
     # for h, idx in enumerate(hammings):
     #     print(h, i)
     closest = set()
+
+    closest_k = []
     for idx, h in enumerate(hammings):
         if (h == 0).all():
-            closest.add(idx)
+            # closest.add(idx)
+            closest_k.append(idx)
+
     #     count = 0
     #     for i in h:
     #         if i == False:
@@ -136,7 +140,8 @@ def get_hamming(X, query):
     #         # max_id = idx
     #         closest = set()
     #         closest.add(idx)
-    return closest
+    # return closest
+    return closest_k[:20]
 
 
 def compactbit(b):

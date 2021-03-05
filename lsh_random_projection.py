@@ -1,6 +1,7 @@
 # import matplotlib.pyplot as plt
 from itertools import combinations
 from sklearn.preprocessing import Normalizer
+from sklearn.model_selection import train_test_split
 from collections import defaultdict
 import scipy.io
 import os
@@ -10,6 +11,7 @@ import pandas as pd
 import utils
 import IPython.display as ipd
 import matplotlib
+
 
 import features as ft
 import heapq
@@ -57,21 +59,45 @@ class LSH:
 
     def get(self, inp_vec, collision_ratio=0.5, probeType="step-wise"):
 
-        collisions_dict = {}
+        # collisions_dict = {}
+        queries_coll_list = [{} for i in range(len(inp_vec))]
         for table in self.hash_tables:
 
             table_matches = table.get(inp_vec, probeType)
-            for point in table_matches:
 
-                if point not in collisions_dict:
-                    collisions_dict[point] = 0
-                collisions_dict[point] = collisions_dict[point] + 1
+            # print("TABLE MATCHES ", len(table_matches))
+            # for point in table_matches:
+            #     # print("POINTS ", point, " ", idx)
 
-        query_matches = []
+            #     if point not in collisions_dict:
+            #         collisions_dict[point] = 0
+            #     collisions_dict[point] = collisions_dict[point] + 1
 
-        for c in collisions_dict:
-            if collisions_dict[c] >= self.num_tables * collision_ratio:
-                query_matches.append(c)
+            for idx, query_match in enumerate(table_matches):
+
+                match_dict = queries_coll_list[idx]
+                # print("match_dict", match_dict)
+
+                for m in query_match:
+                    if m not in match_dict:
+                        match_dict[m] = 0
+                    match_dict[m] = match_dict[m] + 1
+
+        query_matches = [[] for i in range(len(inp_vec))]
+
+        for idx, query_dict in enumerate(queries_coll_list):
+            for c in query_dict:
+                if query_dict[c] >= self.num_tables * collision_ratio:
+                    query_matches[idx].append(c)
+
+        # return query_matches
+        # query_match = [ [queries mactching this inp_vec] ]
+
+        # query_matches = []
+
+        # for c in collisions_dict:
+        #     if collisions_dict[c] >= self.num_tables * collision_ratio:
+        #         query_matches.append(c)
 
         return self.get_top_k(inp_vec, query_matches)
 
@@ -80,27 +106,63 @@ class LSH:
         if not candidates:
             return None
 
-        candidate_list = features.ix[candidates]['mfcc']
+        query_top_ks = [None for i in range(len(inp_vec))]
 
-        # print("CANdidate list", candidate_list)
-        # print(candidate_list)
+        for idx, cs in enumerate(candidates):
+            candidate_list = features.ix[cs]['mfcc']
+            ground_truths = tracks['track']['genre_top'].ix[cs]
 
-        ground_truths = tracks['track']['genre_top'].ix[candidates]
+            candidate_list = features.ix[cs]['mfcc']
 
-        distance = pairwise_distances(
-            candidate_list, inp_vec, metric='euclidean').flatten()
+            # print("CANdidate list", candidate_list)
+            # print(candidate_list)
 
-        nearest_neighbours = pd.DataFrame({'id': candidates, 'genre': ground_truths, 'distance': distance}).sort_values(
-            'distance').reset_index(drop=True)
+            ground_truths = tracks['track']['genre_top'].ix[cs]
 
-        candidate_set_labels = nearest_neighbours.sort_values(
-            by=['distance'], ascending=True)
+            # print(inp_vec)
 
-        non_null = candidate_set_labels[candidate_set_labels['genre'].notnull(
-        )]
+            distance = []
+            if len(candidate_list != 0):
+                distance = pairwise_distances(
+                    candidate_list, inp_vec.iloc[idx], metric='euclidean').flatten()
 
-        top = min(k, len(non_null))
-        return non_null[:top]
+            # print("len ", len(cs), " ", len(ground_truths), " ", len(distance))
+#
+            nearest_neighbours = pd.DataFrame({'id': cs, 'genre': ground_truths, 'distance': distance}).sort_values(
+                'distance').reset_index(drop=True)
+
+            candidate_set_labels = nearest_neighbours.sort_values(
+                by=['distance'], ascending=True)
+
+            non_null = candidate_set_labels[candidate_set_labels['genre'].notnull(
+            )]
+
+            top = min(k, len(non_null))
+            query_top_ks[idx] = non_null[:top]
+
+        return query_top_ks
+
+        # candidate_list = features.ix[candidates]['mfcc']
+
+        # # print("CANdidate list", candidate_list)
+        # # print(candidate_list)
+
+        # ground_truths = tracks['track']['genre_top'].ix[candidates]
+
+        # distance = pairwise_distances(
+        #     candidate_list, inp_vec, metric='euclidean').flatten()
+
+        # nearest_neighbours = pd.DataFrame({'id': candidates, 'genre': ground_truths, 'distance': distance}).sort_values(
+        #     'distance').reset_index(drop=True)
+
+        # candidate_set_labels = nearest_neighbours.sort_values(
+        #     by=['distance'], ascending=True)
+
+        # non_null = candidate_set_labels[candidate_set_labels['genre'].notnull(
+        # )]
+
+        # top = min(k, len(non_null))
+        # return non_null[:top]
 
 
 class HashTable:
@@ -140,6 +202,12 @@ class HashTable:
     def get_keys(self, inp_vec, is_probe):
 
         bin_bits = inp_vec.dot(self.projections) >= 0
+
+        # TODO make a dict for each input vecotr
+
+        # print("bits ", bin_bits)
+
+        # print("orig_key ", orig_keys)
 
         if (is_probe):
             # print("BEFORE")
@@ -191,11 +259,11 @@ class HashTable:
         for orig_bin in bin_indices_bits.values:
 
             p_bins = []
-#
+
             for perturbed_idxs in combinations(range(self.hash_size), search_radius):
 
                 idxs = list(perturbed_idxs)
-                print("pertubrs ", idxs)
+                # print("pertubrs ", idxs)
                 perturbed_query = orig_bin.copy()
 
                 for idx in idxs:
@@ -218,11 +286,15 @@ class HashTable:
         else:
             bins = self.get_keys(inp_vec, False)
 
+            # print("BINS", bins)
+
+        # print("BINS bins, bins ", bins)
+
         for key in bins:
 
             if key in self.hash_table:
                 # return self.hash_table[key]
-                res.extend(self.hash_table[key])
+                res.append(self.hash_table[key])
         return res
 
     def majority(self, bin):
@@ -265,81 +337,95 @@ class HashTable:
                   " total: ", count, " \n \n \n")
 
 
-lsh = LSH(1, 25, 140)
-lsh.add(features['mfcc'])
+# lsh = LSH(10, 25, 140)
+# lsh.add(features['mfcc'])
 
-# query_df = ft.compute_features(2)
+# lsh_two = LSH(40, 25, 140)
+# # lsh_two.add(features['mfcc'])
 
 
-# kate_nash_10s = ft.compute_features("./input_audio/kate_nash_10s.mp3")
-# kate_nash_5s = ft.compute_features("./input_audio/kate_nash_5s.mp3")
-# tinie = ft.compute_features("./input_audio/tinie.mp3")
-# kate_nash_full = ft.compute_features("./input_audio/kate_nash_full.mp3")
-# ariana_grande = ft.compute_features("./input_audio/ariana-grande.mp3")
-# ludovico = ft.compute_features("./input_audio/ludovico_einaudi.mp3")
-# liszt = ft.compute_features("./input_audio/franz_list.mp3")
-# second = ft.compute_features("./input_audio/test.mp3")
+# X_train, X_test = train_test_split(features, test_size=100)
 
-# print("KATE NASHSES")
-# print(kate_nash_10s)
-# print("5sssss")
-# print(kate_nash_5s)
-# print("kate_nash_full")
-# print(kate_nash_full)
-# print("tinie")
-# print(tinie)
+# print("SHAPES ", X_train.shape)
+# print(X_test.shape)
+# # query_df = ft.compute_features(2)
 
-# print("MY FEATURES")
-# print(query_df)
-# print("THEIRS")
+
+# # kate_nash_10s = ft.compute_features("./input_audio/kate_nash_10s.mp3")
+# # kate_nash_5s = ft.compute_features("./input_audio/kate_nash_5s.mp3")
+# # tinie = ft.compute_features("./input_audio/tinie.mp3")
+# # kate_nash_full = ft.compute_features("./input_audio/kate_nash_full.mp3")
+# # ariana_grande = ft.compute_features("./input_audio/ariana-grande.mp3")
+# # ludovico = ft.compute_features("./input_audio/ludovico_einaudi.mp3")
+# # liszt = ft.compute_features("./input_audio/franz_list.mp3")
+# # second = ft.compute_features("./input_audio/test.mp3")
+
+# # print("KATE NASHSES")
+# # print(kate_nash_10s)
+# # print("5sssss")
+# # print(kate_nash_5s)
+# # print("kate_nash_full")
+# # print(kate_nash_full)
+# # print("tinie")
+# # print(tinie)
+
+# # print("MY FEATURES")
+# # print(query_df)
+# # print("THEIRS")
 # print(features.iloc[1:2])
 
 
-# res = lsh.get(kate_nash_10s)
-# print("KATE_NASH 10s")
-# print(res)
+# # res = lsh.get(kate_nash_10s)
+# # print("KATE_NASH 10s")
+# # print(res)
 
-# res_two = lsh.get(kate_nash_5s)
-# print("KATE_NASH 5s")
-# print(res_two)
+# # res_two = lsh.get(kate_nash_5s)
+# # print("KATE_NASH 5s")
+# # print(res_two)
 
-# res_three = lsh.get(kate_nash_full)
-# print("KATE_NASH FULL ")
-# print(res_three)
-
-
-# res_four = lsh.get(ariana_grande)
-# print("ARIANA ")
-# print(res_four)
-
-# res_five = lsh.get(ludovico)
-# print("LUDOVICO")
-# print(res_five)
+# # res_three = lsh.get(kate_nash_full)
+# # print("KATE_NASH FULL ")
+# # print(res_three)
 
 
-# dummy = lsh.get(features.iloc[1:2]['mfcc'], probe=False)
+# # res_four = lsh.get(ariana_grande)
+# # print("ARIANA ")
+# # print(res_four)
+
+# # res_five = lsh.get(ludovico)
+# # print("LUDOVICO")
+# # print(res_five)
+
+
+# dummy = lsh.get(features.iloc[1:3]['mfcc'], probeType=False)
 # print("DUMMY - second song")
-# print(dummy)
+# for d in dummy:
+#     print(">> ", d)
 
 
-# liszt = ft.compute_features("./input_audio/franz_list.mp3")
-# res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
-# print("step-wise")
-# print(res_six)
+# # liszt = ft.compute_features("./input_audio/franz_list.mp3")
+# # res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
+# # print("step-wise")
+# # print(res_six)
+
+
+# # liszttwo = ft.compute_features("./input_audio/franz_list.mp3")
+# # cormode = lsh.get(liszttwo['mfcc'], probeType="bit-flip")
+# # print(">> bit-flip")
+# # print(cormode)
 
 
 # liszttwo = ft.compute_features("./input_audio/franz_list.mp3")
-# cormode = lsh.get(liszttwo['mfcc'], probeType="bit-flip")
-# print(">> bit-flip")
-# print(cormode)
 
 
-# liszttwo = ft.compute_features("./input_audio/franz_list.mp3")
 # rand_proj = lsh.get(liszttwo['mfcc'], probeType="rand-proj")
-# print("rand_projj")
+# print("rand_projj one table")
 # print(rand_proj)
 
+# rand_proj_two = lsh_two.get(liszttwo['mfcc'], probeType="rand-proj")
+# print("rand_projj multiple!!!!! table")
+# print(rand_proj_two)
 
-# res_eight = lsh.get(second)
-# print("my features - second song")
-# print(res_eight)
+# # res_eight = lsh.get(second)
+# # print("my features - second song")
+# # print(res_eight)
