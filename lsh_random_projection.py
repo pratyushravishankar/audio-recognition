@@ -57,7 +57,7 @@ class LSH:
         for table in self.hash_tables:
             table.add(inp_vec)
 
-    def get(self, inp_vec, collision_ratio=0.5, probeType="step-wise"):
+    def get(self, inp_vec, collision_ratio=0.6, probeType="step-wise"):
 
         # collisions_dict = {}
         queries_coll_list = [{} for i in range(len(inp_vec))]
@@ -67,7 +67,7 @@ class LSH:
 
             # print("TABLE MATCHES ", len(table_matches))
             # for point in table_matches:
-            #     # print("POINTS ", point, " ", idx)
+            # print("POINTS ", point, " ", idx)
 
             #     if point not in collisions_dict:
             #         collisions_dict[point] = 0
@@ -87,6 +87,7 @@ class LSH:
 
         for idx, query_dict in enumerate(queries_coll_list):
             for c in query_dict:
+                # print(c, " value ", self.num_tables * collision_ratio)
                 if query_dict[c] >= self.num_tables * collision_ratio:
                     query_matches[idx].append(c)
 
@@ -98,6 +99,8 @@ class LSH:
         # for c in collisions_dict:
         #     if collisions_dict[c] >= self.num_tables * collision_ratio:
         #         query_matches.append(c)
+        # for m in query_matches:
+        #     print(" M M M ", m)
 
         return self.get_top_k(inp_vec, query_matches)
 
@@ -109,7 +112,6 @@ class LSH:
         query_top_ks = [None for i in range(len(inp_vec))]
 
         for idx, cs in enumerate(candidates):
-            candidate_list = features.ix[cs]['mfcc']
             ground_truths = tracks['track']['genre_top'].ix[cs]
 
             candidate_list = features.ix[cs]['mfcc']
@@ -119,7 +121,8 @@ class LSH:
 
             ground_truths = tracks['track']['genre_top'].ix[cs]
 
-            # print(inp_vec)
+            # print("candiadates shape", candidate_list.shape)
+            # print("inpvec shape", inp_vec.iloc[idx].shape)
 
             distance = []
             if len(candidate_list != 0):
@@ -174,7 +177,7 @@ class HashTable:
 
     def add(self, inp_vec):
 
-        keys = self.get_keys(inp_vec, is_probe=False)
+        keys = self.get_exact_keys(inp_vec)
 
         keys_df = keys.to_frame(name="idx")
 
@@ -221,6 +224,20 @@ class HashTable:
         decimal_keys = bin_bits.dot(powers_of_two)
         return decimal_keys
 
+    def get_exact_keys(self, inp_vec):
+
+        bin_bits = inp_vec.dot(self.projections) >= 0
+
+        # TODO make a dict for each input vecotr
+
+        # print("bits ", bin_bits)
+
+        # print("orig_key ", orig_keys)
+
+        powers_of_two = 1 << np.arange(self.hash_size - 1, -1, step=-1)
+        decimal_keys = bin_bits.dot(powers_of_two)
+        return decimal_keys
+
     def get_keys_cormode(self, inp_vec, k=8):
 
         # print("AT CORMODE!!!!!")
@@ -256,9 +273,14 @@ class HashTable:
 
     def get_probe_bins(self, bin_indices_bits, search_radius=1):
 
-        for orig_bin in bin_indices_bits.values:
+        bin_bits = bin_indices_bits.dot(self.projections) >= 0
 
-            p_bins = []
+        print("S> >", bin_bits.shape)
+
+        p_bins = []
+        for orig_bin in bin_bits.values:
+
+            p_bins.append(orig_bin)
 
             for perturbed_idxs in combinations(range(self.hash_size), search_radius):
 
@@ -271,31 +293,58 @@ class HashTable:
 
                 p_bins.append(perturbed_query)
 
-        return bin_indices_bits.append(pd.DataFrame(np.array(p_bins), columns=bin_indices_bits.columns))
+        probed_bin_bits = pd.DataFrame(
+            np.array(p_bins), columns=bin_bits.columns)
+        powers_of_two = 1 << np.arange(self.hash_size - 1, -1, step=-1)
+        decimal_keys = probed_bin_bits.dot(powers_of_two)
+        return decimal_keys
 
     def get(self, inp_vec, probeType):
 
         res = []
         if probeType == "step-wise":
             print("step -wise!!!")
-            bins = self.get_keys(inp_vec, True)
+            # bins = self.get_keys(inp_vec, True)
+            bins = self.get_probe_bins(inp_vec, search_radius=1)
+
+            # print("bins", bins)
+
+            # print("bins shape", bins.shape)
+
+            # change to permutation
+            len_same_query_bins = self.hash_size + 1
+
+            for i in range(0, len(bins), len_same_query_bins):
+
+                same_queries_matches = []
+                for j in range(len_same_query_bins):
+
+                    idx = i + j
+                    key = bins[idx]
+                    if key in self.hash_table:
+                        same_queries_matches.extend(self.hash_table[key])
+
+                res.append(same_queries_matches)
+                # TODO get contentes form each bin
+
         elif probeType == "bit-flip":
             print("bit-flip!!!")
             bins = self.get_keys_cormode(inp_vec)
             # print("BINS >>> ", bins)
         else:
-            bins = self.get_keys(inp_vec, False)
+            # bins = self.get_keys(inp_vec, False)
+            bins = self.get_exact_keys(inp_vec)
 
-            # print("BINS", bins)
+            for key in bins:
+
+                if key in self.hash_table:
+                    # return self.hash_table[key]
+                    res.append(self.hash_table[key])
+        return res
+
+        # print("BINS", bins)
 
         # print("BINS bins, bins ", bins)
-
-        for key in bins:
-
-            if key in self.hash_table:
-                # return self.hash_table[key]
-                res.append(self.hash_table[key])
-        return res
 
     def majority(self, bin):
 

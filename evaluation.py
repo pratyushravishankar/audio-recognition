@@ -48,8 +48,7 @@ class Evaluation:
     #     None
 
         # for q in queries:
-        # tic = time.perf_counter()
-        # lsh.get(q)
+        # tic = time.perf_counter()        # lsh.get(q)
         # toc = time.perf_counter()
         # time.list.append(toc - tic)
 
@@ -91,21 +90,21 @@ class Evaluation:
         # print(">>>>> I " i)
         # print(matches)`
 
-    def get_recall_accuracy(self, X):
+    def get_recall_accuracy(self, x, X, probeType):
         # TODO
         # get with 100 queries
         # matches_list = getquries()
-        matches_list = lsh.get(X, probeType="rand-proj")
+        matches_list = lsh.get(X, collision_ratio=0.5, probeType=probeType)
 
-        brute_forces = eval.bruteforce_get(features['mfcc'], X)
+        brute_forces = eval.bruteforce_get(x, X)
         avg_recall = 0
         count = 0
 
         for matches, answers in zip(matches_list, brute_forces):
 
-            print("MATCHES ", matches)
+            # print("MATCHES ", matches)
 
-            print("ANSWERS ", answers)
+            # print("ANSWERS ", answers)
 
             #     # webrute_forces_list = []
 
@@ -187,7 +186,7 @@ class Evaluation:
             distance = pairwise_distances(
                 features, inp_vec.iloc[idx], metric='euclidean').flatten()
 
-            nearest_neighbours = pd.DataFrame({'id': features.index, 'genre': tracks['track']['genre_top'], 'distance': distance}).sort_values(
+            nearest_neighbours = pd.DataFrame({'id': features.index, 'genre': tracks['track']['genre_top'].ix[features.index], 'distance': distance}).sort_values(
                 'distance').reset_index(drop=True)
 
             # print("nearest negih")
@@ -203,8 +202,43 @@ class Evaluation:
 
         return query_top_ks
 
+    def get_expected_genre_accuracy(self, all_data, inp_vec, probeType):
 
-lsh = LSH.LSH(1, 25, 140)
+        matches_list = lsh.get(
+            inp_vec, collision_ratio=0.5, probeType=probeType)
+
+        ground_truths = tracks['track']['genre_top'].ix[inp_vec.index]
+
+        ratio_sum = 0
+        count = 0
+
+        for answer, top_k_genres in zip(ground_truths, matches_list):
+
+            ratio = self.get_answer_occurence(answer, top_k_genres)
+            if not pd.isnull(answer):
+                ratio_sum += ratio
+                count += 1
+                print("answer:", answer, ">> top:", top_k_genres)
+            print("RATOIO ratio ", ratio)
+
+        return ratio_sum / count, count
+
+    def get_answer_occurence(self, answer, top_k_genres):
+
+        if len(top_k_genres) == 0:
+            return 0
+
+        count = 0
+        for genre in top_k_genres['genre']:
+            if answer == genre:
+                count += 1
+        return count / len(top_k_genres)
+
+
+X_train, X_test = train_test_split(features, test_size=100)
+# get expected genre
+# get number of correct in top 20
+lsh = LSH.LSH(4, 25, 140)
 # lsh.add(features['mfcc'])
 
 
@@ -216,14 +250,20 @@ lsh = LSH.LSH(1, 25, 140)
 
 # print("Brute-force : ", brute_force_top_k)
 
-# val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-# print("Process usage: ", val)
 
-X_train, X_test = train_test_split(features, test_size=2)
+#
 
 lsh.add(X_train['mfcc'])
 eval = Evaluation(lsh)
 
-res = eval.get_recall_accuracy(X_test['mfcc'])
 
-print("TOTAL RATIO ", res)
+# res = eval.get_recall_accuracy(
+#     X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
+
+res, count = eval.get_expected_genre_accuracy(
+    X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
+
+print("TOTAL accuracy ", res, " with no: ", count)
+
+# val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+# print("Process usage: ", val)
