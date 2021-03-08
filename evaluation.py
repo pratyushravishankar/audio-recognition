@@ -1,11 +1,11 @@
 
-# import matplotlib
+import matplotlib
 from tqdm import tqdm
 import librosa
 from scipy import stats
 import warnings
 import multiprocessing
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.metrics.pairwise import pairwise_distances
 import pandas as pd
@@ -15,7 +15,7 @@ import time
 import lsh_random_projection as LSH
 import resource
 import numpy as np
-
+import seaborn as sns
 import os
 
 # import matplotlib.pyplot as
@@ -35,23 +35,6 @@ class Evaluation:
     # spectral/
     # lsh_ranodmised_proj
 
-    # def eval_genre_accuracy(self):
-
-    #     # eval same lsh instance with genre accuracy lsh_probe 1 & 2, spectral_hashing
-
-    #     # create lsh instance, with populated dataset
-    #     # try 10 different queries
-    #     # time them for probe methods + wihtouth probe
-
-    #     # create spectral_hashing isinstance
-    #     # time for spectral_hashing
-
-    #     lsh = LSH.LSH(1, 5, 140)
-
-    #     queries = getQueries()
-
-    #     time_list = get_list_time(lsh, queries)
-
     # def get_list_times(querymethod,  queries):
     #     None
 
@@ -60,63 +43,55 @@ class Evaluation:
         # toc = time.perf_counter()
         # time.list.append(toc - tic)
 
-    def grid_search(self):
+        # def get_boxplot_rand_projection(self, X):
 
-        key_sizes = [i for i in range(5, 40, 5)]
-        tables_sizes = [i for i in range(1, 50)]
+        #     # print(X)
 
-        for key in key_sizes:
-            for table in tables_sizes:
+        #     ys = []
+        #     xs = []
 
-                # def get_boxplot_rand_projection(self, X):
+        #     # # TODO compile all data from 100 queries into same array.
 
-                #     # print(X)
+        #     for i in range(10):
 
-                #     ys = []
-                #     xs = []
+        #         ratio = (i + 1) / 10
 
-                #     # # TODO compile all data from 100 queries into same array.
+        #         ys.append(ratio)
 
-                #     for i in range(10):
+        #         matches = lsh.get(inp_vec=X, collision_ratio=i,
+        #                           probeType="rand_proj")
 
-                #         ratio = (i + 1) / 10
+        #     #     # for row in X.iterrows():
+        #     #     # print(">> > ", row)
+        #     #     query_df = X.iloc[1:2]
 
-                #         ys.append(ratio)
+        #     #     # print(query_df)
 
-                #         matches = lsh.get(inp_vec=X, collision_ratio=i,
-                #                           probeType="rand_proj")
+        #     #     # matches = lsh.get(query_df, ratio, probeType="rand-proj")
+        #     #     # print("ratio: ", ratio, "ROW : ", matches)
 
-                #     #     # for row in X.iterrows():
-                #     #     # print(">> > ", row)
-                #     #     query_df = X.iloc[1:2]
+        #     #     xs.append(matches)
 
-                #     #     # print(query_df)
+        #     #     # print(matches)
 
-                #     #     # matches = lsh.get(query_df, ratio, probeType="rand-proj")
-                #     #     # print("ratio: ", ratio, "ROW : ", matches)
+        #     # plt.boxplot(xs, ys)
 
-                #     #     xs.append(matches)
+        #     # plt.show()
 
-                #     #     # print(matches)
+        # np.random.seed(19680801)
 
-                #     # plt.boxplot(xs, ys)
+        # # fake up some data
+        # spread = np.random.rand(50) * 100
+        # center = np.ones(25) * 50
+        # flier_high = np.random.rand(10) * 100 + 100
+        # flier_low = np.random.rand(10) * -100
+        # data = np.concatenate((spread, center, flier_high, flier_low))
+        # fig1, ax1 = plt.subplots()
+        # ax1.set_title('Basic Plot')
+        # ax1.boxplot(data)
+        # plt.show()
 
-                #     # plt.show()
-
-        np.random.seed(19680801)
-
-        # fake up some data
-        spread = np.random.rand(50) * 100
-        center = np.ones(25) * 50
-        flier_high = np.random.rand(10) * 100 + 100
-        flier_low = np.random.rand(10) * -100
-        data = np.concatenate((spread, center, flier_high, flier_low))
-        fig1, ax1 = plt.subplots()
-        ax1.set_title('Basic Plot')
-        ax1.boxplot(data)
-        plt.show()
-
-#
+        #
         # print("XS ", xs)
         # print("YS ", ys)
 
@@ -127,9 +102,10 @@ class Evaluation:
         # TODO
         # get with 100 queries
         # matches_list = getquries()
-        matches_list = lsh.get(X, collision_ratio=0.5, probeType=probeType)
+        matches_list = self.lsh.get(
+            X, collision_ratio=0.5, probeType=probeType)
 
-        brute_forces = eval.bruteforce_get(x, X)
+        brute_forces = self.bruteforce_get(x, X)
         avg_recall = 0
         count = 0
 
@@ -268,45 +244,118 @@ class Evaluation:
         return count / len(top_k_genres)
 
 
-X_train, X_test = train_test_split(features, test_size=10)
-# get expected genre
-# get number of correct in top 20
-lsh = LSH.LSH(40, 25, 140)
-# lsh.add(features['mfcc'])
+def grid_search():
+
+    key_sizes = [i for i in range(5, 40, 5)]
+    tables_sizes = [i for i in range(1, 50, 5)]
+
+    X_train, X_test = train_test_split(features, test_size=10)
+
+    res = []
+    res_keys = []
+    res_tables = []
+
+    acc = []
+
+    for key in key_sizes:
+        for table in tables_sizes:
+
+            lsh = LSH.LSH(table, key, 140)
+            lsh.add(X_train['mfcc'])
+
+            eval = Evaluation(lsh)
+
+            accuracy = eval.get_recall_accuracy(
+                X_train['mfcc'], X_test['mfcc'], "rand_proj")
+
+            res.append([key, table, accuracy])
+
+            acc.append(accuracy)
+            res_keys.append(key)
+            res_tables.append(table)
+
+        # acc.append("\n")
+
+    print(acc)
+
+    data = pd.DataFrame(
+        data={'keys': res_keys, 'tables': res_tables, 'accuracy': acc})
+    data = data.pivot(index='keys', columns='tables', values='accuracy')
+
+    sns.set_style("whitegrid")
+    plt.figure(figsize=(16, 6))
+    plt.subplot(1, 1, 1)
+    sns.heatmap(data, annot=True, cmap="YlGnBu").set_title(
+        'Random Projection LSH grid search')
+    plt.show()
+
+    # mpl.rcParams['figure.figsize'] = (8.0, 7.0)
+    # sns.heatmap(grid_search_groupby(results, 'max_depth', 'n_estimators'),
+    #             cmap='plasma', annot=True, fmt='.4f')
+    # plt.title('Grid Search Result: Max Depth vs N-Estimators')
+    # plt.xlabel('N_Estimators')
+    # plt.ylabel('Max Depth')
+    # plt.figure(figsize=(8, 6))
+    # plt.subplots_adjust(left=.2, right=0.95, bottom=0.15, top=0.95)
+    # plt.imshow(acc, interpolation='nearest', cmap=plt.cm.hot)
+    # plt.xlabel('n_estimators')
+    # plt.ylabel('min_samples_leaf')
+    # plt.colorbar()
+    # plt.xticks(np.arange(len(n_estimators)), n_estimators)
+    # plt.yticks(np.arange(len(min_samples_leaf)), min_samples_leaf)
+    # plt.title('Grid Search AUC Score')
+    # plt.show()
 
 
-# eval.eval_top_k_accuracy()
-# query_df = features.iloc[1:2]
-# brute_force_top_k = eval.bruteforce_get(
-#     features['mfcc'], query_df['mfcc'])
+grid_search()
 
 
-# print("Brute-force : ", brute_force_top_k)
-
-
-lsh.add(X_train['mfcc'])
-eval = Evaluation(lsh)
-
-# liszt = ft.compute_features("input_audio/ariana-grande.mp3")
-
-# print("LSIZT", liszt)
-# res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
-
-
-res = eval.get_recall_accuracy(
-    X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
-
-# liszt = ft.compute_features("./input_audio/franz_list.mp3")
-# res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
-
-# print(res_six)
-
-# res, count = eval.get_expected_genre_accuracy(
-#     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
-
-# res = eval.get_boxplot_rand_projection(X_train['mfcc'])
-
-# print("TOTAL accuracy ", res, " with no: ")
+# X_train, X_test = train_test_split(features, test_size=10)
+# # get expected genre
+# # get number of correct in top 20
 
 # val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-# print("Process usage: ", val)
+# print("BEFORE Process usage: ", val)
+
+# lsh = LSH.LSH(1, 25, 140)
+# # lsh.add(features['mfcc'])
+
+
+# # eval.eval_top_k_accuracy()
+# # query_df = features.iloc[1:2]
+# # brute_force_top_k = eval.bruteforce_get(
+# #     features['mfcc'], query_df['mfcc'])
+
+
+# # print("Brute-force : ", brute_force_top_k)
+
+
+# lsh.add(X_train['mfcc'])
+# eval = Evaluation(lsh)
+
+# # liszt = ft.compute_features("input_audio/ariana-grande.mp3")
+
+# # print("LSIZT", liszt)
+# # res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
+
+
+# res = eval.get_recall_accuracy(
+#     X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
+
+# # liszt = ft.compute_features("./input_audio/franz_list.mp3")
+# # res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
+
+# # print(res_six)
+
+# # res, count = eval.get_expected_genre_accuracy(
+# #     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
+
+# # res = eval.get_boxplot_rand_projection(X_train['mfcc'])
+
+# # print("TOTAL accuracy ", res, " with no: ")
+
+# # val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+# # print("Process usage: ", val)
+
+# val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+# print("AFTER!!!! Process usage: ", val)

@@ -11,6 +11,7 @@ import pandas as pd
 import utils
 # import IPython.display as ipd
 import matplotlib
+import resource
 
 
 import features as ft
@@ -44,6 +45,7 @@ n_vectors = 16
 
 
 class LSH:
+
     def __init__(self, num_tables, hash_size, inp_dimensions):
         self.num_tables = num_tables
         self.hash_size = hash_size
@@ -56,6 +58,11 @@ class LSH:
     def add(self, inp_vec):
         for table in self.hash_tables:
             table.add(inp_vec)
+
+            val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            print("for each process Process usage: ", val)
+        val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        print("AFTER FINISHING PROCESSES Process usage: ", val)
 
     def get(self, inp_vec, collision_ratio=0.6, probeType="step-wise"):
 
@@ -99,8 +106,8 @@ class LSH:
         # for c in collisions_dict:
         #     if collisions_dict[c] >= self.num_tables * collision_ratio:
         #         query_matches.append(c)
-        for m in query_matches:
-            print(" M M M ", m)
+        # for m in query_matches:
+            # print(" M M M ", m)
 
         return self.get_top_k(inp_vec, query_matches)
 
@@ -109,20 +116,20 @@ class LSH:
         if not candidates:
             return None
 
-        print("toplevel candidates len ", candidates)
+        # print("toplevel candidates len ", candidates)
 
         query_top_ks = [None for i in range(len(inp_vec))]
 
         for idx, cs in enumerate(candidates):
-            ground_truths = tracks['track']['genre_top'].ix[cs]
+            ground_truths = tracks['track']['genre_top'].loc[cs]
 
-            candidate_list = features.ix[cs]['mfcc']
+            candidate_list = features.loc[cs]['mfcc']
 
             # print("CANdidate list", candidate_list)
             # print(candidate_list)
 
-            print("candiadates shape", candidate_list.shape)
-            print("inpvec shape", len(inp_vec.iloc[idx]))
+            # print("candiadates shape", candidate_list.shape)
+            # print("inpvec shape", len(inp_vec.iloc[idx]))
 
             distance = []
             if len(candidate_list != 0):
@@ -138,13 +145,13 @@ class LSH:
                 dists = pairwise_distances(
                     candidate_list, inp_vec.iloc[idx].values.reshape(1, -1), metric='euclidean')
 
-                print("DISTANCE ", distance)
+                # print("DISTANCE ", distance)
                 for d in dists:
                     distance.extend(d)
 
-            print("cs ", cs, "grounds : ",
-                  ground_truths.shape, " dists: ", distance)
-
+            # print("cs ", cs, "grounds : ",
+                #   ground_truths.shape, " dists: ", distance)
+#
             nearest_neighbours = pd.DataFrame({'id': cs, 'genre': ground_truths, 'distance': distance}).sort_values(
                 'distance').reset_index(drop=True)
 
@@ -288,7 +295,7 @@ class HashTable:
 
         bin_bits = bin_indices_bits.dot(self.projections) >= 0
 
-        print("S> >", bin_bits.shape)
+        # print("S> >", bin_bits.shape)
 
         p_bins = []
         for orig_bin in bin_bits.values:
