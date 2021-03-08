@@ -9,7 +9,7 @@ import requests
 import numpy as np
 import pandas as pd
 import utils
-import IPython.display as ipd
+# import IPython.display as ipd
 import matplotlib
 
 
@@ -99,8 +99,8 @@ class LSH:
         # for c in collisions_dict:
         #     if collisions_dict[c] >= self.num_tables * collision_ratio:
         #         query_matches.append(c)
-        # for m in query_matches:
-        #     print(" M M M ", m)
+        for m in query_matches:
+            print(" M M M ", m)
 
         return self.get_top_k(inp_vec, query_matches)
 
@@ -108,6 +108,8 @@ class LSH:
 
         if not candidates:
             return None
+
+        print("toplevel candidates len ", candidates)
 
         query_top_ks = [None for i in range(len(inp_vec))]
 
@@ -119,18 +121,30 @@ class LSH:
             # print("CANdidate list", candidate_list)
             # print(candidate_list)
 
-            ground_truths = tracks['track']['genre_top'].ix[cs]
-
-            # print("candiadates shape", candidate_list.shape)
-            # print("inpvec shape", inp_vec.iloc[idx].shape)
+            print("candiadates shape", candidate_list.shape)
+            print("inpvec shape", len(inp_vec.iloc[idx]))
 
             distance = []
             if len(candidate_list != 0):
-                distance = pairwise_distances(
-                    candidate_list, inp_vec.iloc[idx], metric='euclidean').flatten()
+                # distance = pairwise_distances(
+                # candidate_list, inp_vec.iloc[idx], metric='euclidean').flatten()
 
-            # print("len ", len(cs), " ", len(ground_truths), " ", len(distance))
-#
+                # for cand in candidate_list.values:
+                #     distance = np.linalg.norm(cand, inp_vec.iloc[0])
+                #     print("DISTANCE ", distance)
+
+                # print("<ASDJLK", type(inp_vec.  [idx]))
+
+                dists = pairwise_distances(
+                    candidate_list, inp_vec.iloc[idx].values.reshape(1, -1), metric='euclidean')
+
+                print("DISTANCE ", distance)
+                for d in dists:
+                    distance.extend(d)
+
+            print("cs ", cs, "grounds : ",
+                  ground_truths.shape, " dists: ", distance)
+
             nearest_neighbours = pd.DataFrame({'id': cs, 'genre': ground_truths, 'distance': distance}).sort_values(
                 'distance').reset_index(drop=True)
 
@@ -270,7 +284,6 @@ class HashTable:
         # print(bin_bits)
 #
 
-
     def get_probe_bins(self, bin_indices_bits, search_radius=1):
 
         bin_bits = bin_indices_bits.dot(self.projections) >= 0
@@ -386,7 +399,7 @@ class HashTable:
                   " total: ", count, " \n \n \n")
 
 
-# lsh = LSH(10, 25, 140)
+# lsh = LSH(1, 25, 140)
 # lsh.add(features['mfcc'])
 
 # lsh_two = LSH(40, 25, 140)
@@ -400,7 +413,7 @@ class HashTable:
 # # query_df = ft.compute_features(2)
 
 
-# # kate_nash_10s = ft.compute_features("./input_audio/kate_nash_10s.mp3")
+# kate_nash_10s = ft.compute_features("./input_audio/kate_nash_10s.mp3")
 # # kate_nash_5s = ft.compute_features("./input_audio/kate_nash_5s.mp3")
 # # tinie = ft.compute_features("./input_audio/tinie.mp3")
 # # kate_nash_full = ft.compute_features("./input_audio/kate_nash_full.mp3")
@@ -409,8 +422,8 @@ class HashTable:
 # # liszt = ft.compute_features("./input_audio/franz_list.mp3")
 # # second = ft.compute_features("./input_audio/test.mp3")
 
-# # print("KATE NASHSES")
-# # print(kate_nash_10s)
+# print("KATE/ NASHSES")
+# print(kate_nash_10s)
 # # print("5sssss")
 # # print(kate_nash_5s)
 # # print("kate_nash_full")
@@ -424,9 +437,9 @@ class HashTable:
 # print(features.iloc[1:2])
 
 
-# # res = lsh.get(kate_nash_10s)
-# # print("KATE_NASH 10s")
-# # print(res)
+# res = lsh.get(kate_nash_10s['mfcc'])
+# print("KATE_NASH 10s")
+# print(res)
 
 # # res_two = lsh.get(kate_nash_5s)
 # # print("KATE_NASH 5s")

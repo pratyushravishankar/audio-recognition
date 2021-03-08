@@ -168,3 +168,16 @@ def test(features, ndigits):
 
 if __name__ == "__main__":
     main()
+
+
+# liszt = compute_features(
+    # "/Users/pratyush/Documents/Uni/cs310/code/fma/input_audio")
+
+
+# print("LK JSA", liszt)
+
+# y, sr = librosa.load(librosa.util.example_audio_file(), duration=5.0)
+
+# print(y, sr)
+
+# print(">>> ", liszt['zcr']['max'])

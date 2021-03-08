@@ -1,4 +1,11 @@
 
+# import matplotlib
+from tqdm import tqdm
+import librosa
+from scipy import stats
+import warnings
+import multiprocessing
+# import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.metrics.pairwise import pairwise_distances
 import pandas as pd
@@ -7,9 +14,10 @@ import features as ft
 import time
 import lsh_random_projection as LSH
 import resource
+import numpy as np
 
-import matplotlib
-matplotlib.use('Agg')
+import os
+
 # import matplotlib.pyplot as
 
 features = utils.load('data/fma_metadata/features.csv')
@@ -52,37 +60,62 @@ class Evaluation:
         # toc = time.perf_counter()
         # time.list.append(toc - tic)
 
-    def get_boxplot_rand_projection(self, X):
+    def grid_search(self):
 
-        # print(X)
+        key_sizes = [i for i in range(5, 40, 5)]
+        tables_sizes = [i for i in range(1, 50)]
 
-        ys = []
-        xs = []
+        for key in key_sizes:
+            for table in tables_sizes:
 
-        # TODO compile all data from 100 queries into same array.
+                # def get_boxplot_rand_projection(self, X):
 
-        for i in range(10):
+                #     # print(X)
 
-            ratio = (i + 1) / 10
+                #     ys = []
+                #     xs = []
 
-            ys.append(ratio)
+                #     # # TODO compile all data from 100 queries into same array.
 
-            # for row in X.iterrows():
-            # print(">> > ", row)
-            query_df = X.iloc[1:2]
+                #     for i in range(10):
 
-            # print(query_df)
+                #         ratio = (i + 1) / 10
 
-            matches = lsh.get(query_df, ratio, probeType="rand-proj")
-            print("ratio: ", ratio, "ROW : ", matches)
+                #         ys.append(ratio)
 
-            xs.append(matches)
+                #         matches = lsh.get(inp_vec=X, collision_ratio=i,
+                #                           probeType="rand_proj")
 
-            # print(matches)
+                #     #     # for row in X.iterrows():
+                #     #     # print(">> > ", row)
+                #     #     query_df = X.iloc[1:2]
 
-        # ax = matplotlib.pyplot.boxplot(xs, ys)
+                #     #     # print(query_df)
 
-        # print(ax)
+                #     #     # matches = lsh.get(query_df, ratio, probeType="rand-proj")
+                #     #     # print("ratio: ", ratio, "ROW : ", matches)
+
+                #     #     xs.append(matches)
+
+                #     #     # print(matches)
+
+                #     # plt.boxplot(xs, ys)
+
+                #     # plt.show()
+
+        np.random.seed(19680801)
+
+        # fake up some data
+        spread = np.random.rand(50) * 100
+        center = np.ones(25) * 50
+        flier_high = np.random.rand(10) * 100 + 100
+        flier_low = np.random.rand(10) * -100
+        data = np.concatenate((spread, center, flier_high, flier_low))
+        fig1, ax1 = plt.subplots()
+        ax1.set_title('Basic Plot')
+        ax1.boxplot(data)
+        plt.show()
+
 #
         # print("XS ", xs)
         # print("YS ", ys)
@@ -184,7 +217,7 @@ class Evaluation:
         for idx in range(len(inp_vec)):
 
             distance = pairwise_distances(
-                features, inp_vec.iloc[idx], metric='euclidean').flatten()
+                features, inp_vec.iloc[idx].values.reshape(1, -1), metric='euclidean').flatten()
 
             nearest_neighbours = pd.DataFrame({'id': features.index, 'genre': tracks['track']['genre_top'].ix[features.index], 'distance': distance}).sort_values(
                 'distance').reset_index(drop=True)
@@ -235,10 +268,10 @@ class Evaluation:
         return count / len(top_k_genres)
 
 
-X_train, X_test = train_test_split(features, test_size=100)
+X_train, X_test = train_test_split(features, test_size=10)
 # get expected genre
 # get number of correct in top 20
-lsh = LSH.LSH(4, 25, 140)
+lsh = LSH.LSH(40, 25, 140)
 # lsh.add(features['mfcc'])
 
 
@@ -251,19 +284,29 @@ lsh = LSH.LSH(4, 25, 140)
 # print("Brute-force : ", brute_force_top_k)
 
 
-#
-
 lsh.add(X_train['mfcc'])
 eval = Evaluation(lsh)
 
+# liszt = ft.compute_features("input_audio/ariana-grande.mp3")
 
-# res = eval.get_recall_accuracy(
-#     X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
+# print("LSIZT", liszt)
+# res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
 
-res, count = eval.get_expected_genre_accuracy(
+
+res = eval.get_recall_accuracy(
     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
 
-print("TOTAL accuracy ", res, " with no: ", count)
+# liszt = ft.compute_features("./input_audio/franz_list.mp3")
+# res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
+
+# print(res_six)
+
+# res, count = eval.get_expected_genre_accuracy(
+#     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
+
+# res = eval.get_boxplot_rand_projection(X_train['mfcc'])
+
+# print("TOTAL accuracy ", res, " with no: ")
 
 # val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 # print("Process usage: ", val)
