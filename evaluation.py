@@ -17,7 +17,8 @@ import resource
 import numpy as np
 import seaborn as sns
 import os
-
+import sklearn.preprocessing
+import librosa.display
 # import matplotlib.pyplot as
 
 features = utils.load('data/fma_metadata/features.csv')
@@ -30,6 +31,8 @@ class Evaluation:
     def __init__(self, lsh):
         self.lsh = lsh
 
+    # def get_accuracy
+
     # lsh_probe_1
     # lsh_probe_2
     # spectral/
@@ -38,65 +41,65 @@ class Evaluation:
     # def get_list_times(querymethod,  queries):
     #     None
 
-        # for q in queries:
-        # tic = time.perf_counter()        # lsh.get(q)
-        # toc = time.perf_counter()
-        # time.list.append(toc - tic)
+    # for q in queries:
+    # tic = time.perf_counter()        # lsh.get(q)
+    # toc = time.perf_counter()
+    # time.list.append(toc - tic)
 
-        # def get_boxplot_rand_projection(self, X):
+    # def get_boxplot_rand_projection(self, X):
 
-        #     # print(X)
+    #     # print(X)
 
-        #     ys = []
-        #     xs = []
+    #     ys = []
+    #     xs = []
 
-        #     # # TODO compile all data from 100 queries into same array.
+    #     # # TODO compile all data from 100 queries into same array.
 
-        #     for i in range(10):
+    #     for i in range(10):
 
-        #         ratio = (i + 1) / 10
+    #         ratio = (i + 1) / 10
 
-        #         ys.append(ratio)
+    #         ys.append(ratio)
 
-        #         matches = lsh.get(inp_vec=X, collision_ratio=i,
-        #                           probeType="rand_proj")
+    #         matches = lsh.get(inp_vec=X, collision_ratio=i,
+    #                           probeType="rand_proj")
 
-        #     #     # for row in X.iterrows():
-        #     #     # print(">> > ", row)
-        #     #     query_df = X.iloc[1:2]
+    #     #     # for row in X.iterrows():
+    #     #     # print(">> > ", row)
+    #     #     query_df = X.iloc[1:2]
 
-        #     #     # print(query_df)
+    #     #     # print(query_df)
 
-        #     #     # matches = lsh.get(query_df, ratio, probeType="rand-proj")
-        #     #     # print("ratio: ", ratio, "ROW : ", matches)
+    #     #     # matches = lsh.get(query_df, ratio, probeType="rand-proj")
+    #     #     # print("ratio: ", ratio, "ROW : ", matches)
 
-        #     #     xs.append(matches)
+    #     #     xs.append(matches)
 
-        #     #     # print(matches)
+    #     #     # print(matches)
 
-        #     # plt.boxplot(xs, ys)
+    #     # plt.boxplot(xs, ys)
 
-        #     # plt.show()
+    #     # plt.show()
 
-        # np.random.seed(19680801)
+    # np.random.seed(19680801)
 
-        # # fake up some data
-        # spread = np.random.rand(50) * 100
-        # center = np.ones(25) * 50
-        # flier_high = np.random.rand(10) * 100 + 100
-        # flier_low = np.random.rand(10) * -100
-        # data = np.concatenate((spread, center, flier_high, flier_low))
-        # fig1, ax1 = plt.subplots()
-        # ax1.set_title('Basic Plot')
-        # ax1.boxplot(data)
-        # plt.show()
+    # # fake up some data
+    # spread = np.random.rand(50) * 100
+    # center = np.ones(25) * 50
+    # flier_high = np.random.rand(10) * 100 + 100
+    # flier_low = np.random.rand(10) * -100
+    # data = np.concatenate((spread, center, flier_high, flier_low))
+    # fig1, ax1 = plt.subplots()
+    # ax1.set_title('Basic Plot')
+    # ax1.boxplot(data)
+    # plt.show()
 
-        #
-        # print("XS ", xs)
-        # print("YS ", ys)
+    #
+    # print("XS ", xs)
+    # print("YS ", ys)
 
-        # print(">>>>> I " i)
-        # print(matches)`
+    # print(">>>>> I " i)
+    # print(matches)`
 
     def get_recall_accuracy(self, x, X, probeType):
         # TODO
@@ -244,6 +247,33 @@ class Evaluation:
         return count / len(top_k_genres)
 
 
+# def get_accuraccy_over_hashtables
+
+
+def pca():
+
+    X_train, X_test = train_test_split(
+        features['mfcc'], test_size=0.2, random_state=0)
+
+    from sklearn.preprocessing import StandardScaler
+    sc = StandardScaler()
+    X_train = sc.fit_transform(X_train)
+    X_test = sc.transform(X_test)
+
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=2)
+    X_train = pca.fit_transform(X_train)
+    X_test = pca.transform(X_test)
+
+    plt.scatter(X_test[:, 0], X_test[:, 1], edgecolor='none', alpha=0.5,
+                )
+    plt.xlabel('component 1')
+    plt.ylabel('component 2')
+    plt.colorbar()
+
+    plt.show()
+
+
 def grid_search():
 
     key_sizes = [i for i in range(5, 40, 5)]
@@ -307,7 +337,7 @@ def grid_search():
     # plt.show()
 
 
-grid_search()
+# grid_search()
 
 
 # X_train, X_test = train_test_split(features, test_size=10)
@@ -333,19 +363,19 @@ grid_search()
 # lsh.add(X_train['mfcc'])
 # eval = Evaluation(lsh)
 
-# # liszt = ft.compute_features("input_audio/ariana-grande.mp3")
+# liszt = ft.compute_features("output.wav")
 
-# # print("LSIZT", liszt)
-# # res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
+# print("LSIZT", liszt['mfcc'])
+# res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
 
 
 # res = eval.get_recall_accuracy(
 #     X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
 
-# # liszt = ft.compute_features("./input_audio/franz_list.mp3")
-# # res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
+# liszt = ft.compute_features("./input_audio/franz_list.mp3")
+# res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
 
-# # print(res_six)
+# print(liszt)
 
 # # res, count = eval.get_expected_genre_accuracy(
 # #     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
@@ -359,3 +389,43 @@ grid_search()
 
 # val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 # print("AFTER!!!! Process usage: ", val)
+
+
+# plt.rcParams['figure.figsize'] = (18, 4)
+
+# x, fs = librosa.load("output.wav")
+# librosa.display.waveplot(x, sr=fs)
+
+# mfccs = librosa.feature.mfcc(x, sr=fs)
+# print(mfccs.shape)
+# print(mfccs)
+# mfccs = sklearn.preprocessing.scale(mfccs, axis=1)
+# plt.show()
+
+
+def pca():
+
+    X_train, X_test = train_test_split(
+        features['mfcc'], test_size=0.05, random_state=0)
+
+    from sklearn.preprocessing import StandardScaler
+    sc = StandardScaler()
+    X_train = sc.fit_transform(X_train)
+    X_test = sc.transform(X_test)
+
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=2)
+    X_train = pca.fit_transform(X_train)
+    X_test = pca.transform(X_test)
+
+    plt.scatter(X_test[:, 0], X_test[:, 1], edgecolor='none', alpha=0.5,
+                )
+    plt.xlabel('component 1')
+    plt.ylabel('component 2')
+    plt.title("PCA of FMA audio dataset")
+    plt.colorbar()
+
+    plt.show()
+
+
+print(pca())

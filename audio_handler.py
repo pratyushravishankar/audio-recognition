@@ -25,20 +25,26 @@ class AudioHandler(object):
                                   frames_per_buffer=self.CHUNK)
 
     def stop(self):
+        # res = ft.compute_microphone_features(self.stream)
+        # print("RES ", res
+        # )
+        print("STREAM", self.stream)
         self.stream.close()
+
         self.p.terminate()
 
     def callback(self, in_data, frame_count, time_info, flag):
         numpy_array = np.frombuffer(in_data, dtype=np.float32)
-        # librosa.feature.mfcc(numpy_array)
-        res = ft.compute_microphone_features(numpy_array)
-        print("RES res")
+        res = librosa.feature.mfcc(numpy_array)
+        print(res)
+        # print(numpy_array)
+
         return None, pyaudio.paContinue
 
     def mainloop(self):
         # if using button you can set self.stream to 0 (self.stream = 0), otherwise you can use a stop condition
         count = 0
-        while (count < 10):
+        while (count < 5):
             time.sleep(2.0)
             count += 1
 

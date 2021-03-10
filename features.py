@@ -113,6 +113,79 @@ def compute_features(path):
     return features.to_frame().transpose()
 
 
+def compute_microphone_features(stream):
+
+    features = pd.Series(index=columns(), dtype=np.float32, name="Features")
+
+    # Catch warnings as exceptions (audioread leaks file descriptors).
+    warnings.filterwarnings('error', module='librosa')
+
+    def feature_stats(name, values):
+        features[name, 'mean'] = np.mean(values, axis=1)
+        features[name, 'std'] = np.std(values, axis=1)
+        features[name, 'skew'] = stats.skew(values, axis=1)
+        features[name, 'kurtosis'] = stats.kurtosis(values, axis=1)
+        features[name, 'median'] = np.median(values, axis=1)
+        features[name, 'min'] = np.min(values, axis=1)
+        features[name, 'max'] = np.max(values, axis=1)
+
+    try:
+        # print("here", tid)
+        # filepath = utils.get_audio_path(os.environ.get('AUDIO_DIR'), tid)
+        # x, sr = librosa.load(path, sr=None, mono=True)
+
+        # x, sr = librosa.load(filepath, sr=None, mono=True)  # kaiser_fast
+
+        f = librosa.feature.zero_crossing_rate(
+            stream, frame_length=2048, hop_length=512)
+        feature_stats('zcr', f)
+
+        cqt = np.abs(librosa.cqt(stream, sr=44100, hop_length=512, bins_per_octave=12,
+                                 n_bins=7*12, tuning=None))
+        assert cqt.shape[0] == 7 * 12
+        assert np.ceil(
+            len(stream)/512) <= cqt.shape[1] <= np.ceil(len(stream)/512)+1
+
+        f = librosa.feature.chroma_cqt(C=cqt, n_chroma=12, n_octaves=7)
+        feature_stats('chroma_cqt', f)
+        f = librosa.feature.chroma_cens(C=cqt, n_chroma=12, n_octaves=7)
+        feature_stats('chroma_cens', f)
+        f = librosa.feature.tonnetz(chroma=f)
+        feature_stats('tonnetz', f)
+
+        del cqt
+        stft = np.abs(librosa.stft(stream, n_fft=2048, hop_length=512))
+        assert stft.shape[0] == 1 + 2048 // 2
+        assert np.ceil(
+            len(stream)/512) <= stft.shape[1] <= np.ceil(len(stream)/512)+1
+        del stream
+
+        f = librosa.feature.chroma_stft(S=stft**2, n_chroma=12)
+        feature_stats('chroma_stft', f)
+
+        f = librosa.feature.rmse(S=stft)
+        feature_stats('rmse', f)
+
+        f = librosa.feature.spectral_centroid(S=stft)
+        feature_stats('spectral_centroid', f)
+        f = librosa.feature.spectral_bandwidth(S=stft)
+        feature_stats('spectral_bandwidth', f)
+        f = librosa.feature.spectral_contrast(S=stft, n_bands=6)
+        feature_stats('spectral_contrast', f)
+        f = librosa.feature.spectral_rolloff(S=stft)
+        feature_stats('spectral_rolloff', f)
+
+        mel = librosa.feature.melspectrogram(sr=44100, S=stft**2)
+        del stft
+        f = librosa.feature.mfcc(S=librosa.power_to_db(mel), n_mfcc=20)
+        feature_stats('mfcc', f)
+
+    except Exception as e:
+        print('{}: {}'.format("5", repr(e)))
+
+    return features.to_frame().transpose()
+
+
 def main():
     tracks = utils.load('data/fma_metadata/tracks.csv')
     features = pd.DataFrame(index=tracks.index,
