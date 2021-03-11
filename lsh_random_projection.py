@@ -64,7 +64,7 @@ class LSH:
         val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         print("AFTER FINISHING PROCESSES Process usage: ", val)
 
-    def get(self, inp_vec, collision_ratio=0.6, probeType="rand_proj"):
+    def get(self, inp_vec, collision_ratio=0.6, probeType="rand_proj", k=0):
 
         if probeType != "rand_proj":
             collision_ratio = 1
@@ -73,7 +73,7 @@ class LSH:
         queries_coll_list = [{} for i in range(len(inp_vec))]
         for table in self.hash_tables:
 
-            table_matches = table.get(inp_vec, probeType)
+            table_matches = table.get(inp_vec, probeType, k)
 
             # print("TABLE MATCHES ", len(table_matches))
             # for point in table_matches:
@@ -209,7 +209,7 @@ class HashTable:
 
         keys_df = keys.to_frame(name="idx")
 
-        print(keys_df)
+        # print(keys_df)
 
         track_hashes = keys_df.join(tracks['track'])
 
@@ -272,6 +272,8 @@ class HashTable:
 
         # print("AT CORMODE!!!!!")
         bin_bits = inp_vec.dot(self.projections)
+
+        # print("bin bits before ", bin_bits)
         probed_keys = []
         ixs = []
 
@@ -295,6 +297,8 @@ class HashTable:
 
         probed_projections = pd.DataFrame(
             np.array(probed_keys), index=ixs, columns=bin_bits.columns)
+
+        # print("probed_projections", probed_projections)
         probed_bin_bits = (probed_projections) >= 0
 
         powers_of_two = 1 << np.arange(self.hash_size - 1, -1, step=-1)
@@ -306,6 +310,7 @@ class HashTable:
 
         # print(bin_bits)
 #
+
 
     def get_probe_bins(self, bin_indices_bits, search_radius=1):
 
@@ -335,13 +340,15 @@ class HashTable:
         decimal_keys = probed_bin_bits.dot(powers_of_two)
         return decimal_keys
 
-    def get(self, inp_vec, probeType):
+    def get(self, inp_vec, probeType, k=0):
 
         res = []
         if probeType == "step-wise":
             print("step -wise!!!")
             # bins = self.get_keys(inp_vec, True)
             bins = self.get_probe_bins(inp_vec, search_radius=1)
+
+            # print("k bins ", bins)
 
             # print("bins", bins)
 
@@ -366,8 +373,9 @@ class HashTable:
         elif probeType == "bit-flip":
             print("bit-flip!!!")
 
-            k = 0
             bins = self.get_keys_cormode(inp_vec, k=k)
+
+            # print("bit flip bins ", bins)
 
             len_same_query_bins = k + 1
 
@@ -377,7 +385,9 @@ class HashTable:
                 for j in range(len_same_query_bins):
 
                     idx = i + j
-                    key = bins[idx]
+
+                    # print("i + J", idx)
+                    key = bins.iloc[idx]
                     if key in self.hash_table:
                         same_queries_matches.extend(self.hash_table[key])
 

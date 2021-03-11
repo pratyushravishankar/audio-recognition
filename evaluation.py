@@ -101,12 +101,12 @@ class Evaluation:
     # print(">>>>> I " i)
     # print(matches)`
 
-    def get_recall_accuracy(self, x, X, probeType):
+    def get_recall_accuracy(self, x, X, probeType, k=0):
         # TODO
         # get with 100 queries
         # matches_list = getquries()
         matches_list = self.lsh.get(
-            X, collision_ratio=0.5, probeType=probeType)
+            X, collision_ratio=0.5, probeType=probeType, k=k)
 
         brute_forces = self.bruteforce_get(x, X)
         avg_recall = 0
@@ -405,11 +405,45 @@ X_train, X_test = train_test_split(features, test_size=10)
 # mfccs = sklearn.preprocessing.scale(mfccs, axis=1)
 # plt.show()
 
-# def recall_probes():
+def recall_probes():
 
-# lsh_regular = LSH.LSH(10, 16, 140)
+    key_size = 16
 
-# lsh_bit_flip = LSH.LSH(10, 16, 140))
+    lsh_step_wise = LSH.LSH(10, key_size, 140)
+    lsh_step_wise.add(X_train['mfcc'])
+
+    lsh_bit_flip = LSH.LSH(10, key_size, 140)
+    lsh_bit_flip.add(X_train['mfcc'], True)
+
+    eval_step_wise = Evaluation(lsh_step_wise)
+    eval_bit_flip = Evaluation(lsh_bit_flip)
+
+    step_wise_res = eval_step_wise.get_recall_accuracy(
+        X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
+    step_wise_no_probes = [key_size]
+
+    bit_flip_res = []
+    bit_flip_no_probes = []
+    for i in range(5):
+        print("i:", i)
+        res = eval_bit_flip.get_recall_accuracy(
+            X_train['mfcc'], X_test['mfcc'], probeType="bit-flip", k=i+1)
+        bit_flip_res.append(res)
+        bit_flip_no_probes.append(i + 1)
+
+    print("step-wise res", step_wise_res)
+    print("bit-flip res", bit_flip_res)
+
+    plt.plot(bit_flip_res, bit_flip_no_probes,
+             color='red', marker='o', label="bit-flip")
+    plt.plot(step_wise_res, step_wise_no_probes,
+             color='blue', marker='x', label="step-wise")
+    plt.title('Avg recall for each number of probes ', fontsize=14)
+    plt.xlabel('No. of probes', fontsize=14)
+    plt.ylabel('Recall', fontsize=14)
+    plt.grid(True)
+    plt.legend(loc="upper right")
+    plt.show()
 
 
 def pca():
@@ -438,3 +472,4 @@ def pca():
 
 
 # def get accuracy():
+recall_probes()
