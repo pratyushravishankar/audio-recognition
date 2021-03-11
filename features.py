@@ -50,6 +50,9 @@ def compute_features(path):
     warnings.filterwarnings('error', module='librosa')
 
     def feature_stats(name, values):
+
+        # print("Mean ",  np.mean(values, axis=1))
+        # print("features[name, 'std']",  np.std(values, axis=1))
         features[name, 'mean'] = np.mean(values, axis=1)
         features[name, 'std'] = np.std(values, axis=1)
         features[name, 'skew'] = stats.skew(values, axis=1)
@@ -61,54 +64,78 @@ def compute_features(path):
     try:
         # print("here", tid)
         # filepath = utils.get_audio_path(os.environ.get('AUDIO_DIR'), tid)
-        x, sr = librosa.load(path, sr=None, mono=True)
+        # x, sr = librosa.load(path, sr=None, mono=True)
 
-        # x, sr = librosa.load(filepath, sr=None, mono=True)  # kaiser_fast
+        # read = utils.AudioreadLoader(44100)
+        # res = read._load(path)
+
+        # print("audioread", res)
+
+        # print("?>>> ", x, sr)
+
+        x, sr = librosa.load(path, sr=None, mono=True)  # kaiser_fast
 
         f = librosa.feature.zero_crossing_rate(
             x, frame_length=2048, hop_length=512)
+
+        # print("FFFFFF ", type(x), x)
+
+        # print(f)
+
         feature_stats('zcr', f)
 
-        cqt = np.abs(librosa.cqt(x, sr=sr, hop_length=512, bins_per_octave=12,
-                                 n_bins=7*12, tuning=None))
-        assert cqt.shape[0] == 7 * 12
-        assert np.ceil(len(x)/512) <= cqt.shape[1] <= np.ceil(len(x)/512)+1
+        print("AFTEER ")
 
-        f = librosa.feature.chroma_cqt(C=cqt, n_chroma=12, n_octaves=7)
-        feature_stats('chroma_cqt', f)
-        f = librosa.feature.chroma_cens(C=cqt, n_chroma=12, n_octaves=7)
-        feature_stats('chroma_cens', f)
-        f = librosa.feature.tonnetz(chroma=f)
-        feature_stats('tonnetz', f)
+        # cqt = np.abs(librosa.cqt(x, sr=sr, hop_length=512, bins_per_octave=12,
+        #                          n_bins=7*12, tuning=None))
 
-        del cqt
+        # print("HERE")
+        # assert cqt.shape[0] == 7 * 12
+        # assert np.ceil(len(x)/512) <= cqt.shape[1] <= np.ceil(len(x)/512)+1
+
+        # f = librosa.feature.chroma_cqt(C=cqt, n_chroma=12, n_octaves=7)
+        # feature_stats('chroma_cqt', f)
+        # f = librosa.feature.chroma_cens(C=cqt, n_chroma=12, n_octaves=7)
+        # feature_stats('chroma_cens', f)
+        # f = librosa.feature.tonnetz(chroma=f)
+        # feature_stats('tonnetz', f)
+
+        # del cqt
+
+        print("HERE")
         stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
-        assert stft.shape[0] == 1 + 2048 // 2
-        assert np.ceil(len(x)/512) <= stft.shape[1] <= np.ceil(len(x)/512)+1
-        del x
+        print("stft", stft)
+        # assert stft.shape[0] == 1 + 2048 // 2
+        # assert np.ceil(len(x)/512) <= stft.shape[1] <= np.ceil(len(x)/512)+1
+        # del x
 
-        f = librosa.feature.chroma_stft(S=stft**2, n_chroma=12)
-        feature_stats('chroma_stft', f)
+        # f = librosa.feature.chroma_stft(S=stft**2, n_chroma=12)
+        # feature_stats('chroma_stft', f)
 
-        f = librosa.feature.rmse(S=stft)
-        feature_stats('rmse', f)
+        # f = librosa.feature.rmse(S=stft)
+        # feature_stats('rmse', f)
 
-        f = librosa.feature.spectral_centroid(S=stft)
-        feature_stats('spectral_centroid', f)
-        f = librosa.feature.spectral_bandwidth(S=stft)
-        feature_stats('spectral_bandwidth', f)
-        f = librosa.feature.spectral_contrast(S=stft, n_bands=6)
-        feature_stats('spectral_contrast', f)
-        f = librosa.feature.spectral_rolloff(S=stft)
-        feature_stats('spectral_rolloff', f)
+        # f = librosa.feature.spectral_centroid(S=stft)
+        # feature_stats('spectral_centroid', f)
+        # f = librosa.feature.spectral_bandwidth(S=stft)
+        # feature_stats('spectral_bandwidth', f)
+        # f = librosa.feature.spectral_contrast(S=stft, n_bands=6)
+        # feature_stats('spectral_contrast', f)
+        # f = librosa.feature.spectral_rolloff(S=stft)
+        # feature_stats('spectral_rolloff', f)
 
         mel = librosa.feature.melspectrogram(sr=sr, S=stft**2)
-        del stft
+        # del stft
         f = librosa.feature.mfcc(S=librosa.power_to_db(mel), n_mfcc=20)
+
+        print(" mfccssss ")
         feature_stats('mfcc', f)
 
     except Exception as e:
-        print('{}: {}'.format("5", repr(e)))
+        import traceback
+        print("CAUGHT")
+        # print('{}: {}'.format("5", repr(e)))
+        print(traceback.format_exc())
 
     return features.to_frame().transpose()
 
@@ -132,7 +159,13 @@ def compute_microphone_features(stream):
     try:
         # print("here", tid)
         # filepath = utils.get_audio_path(os.environ.get('AUDIO_DIR'), tid)
-        # x, sr = librosa.load(path, sr=None, mono=True)
+        # x, sr = librosa.load(stream, sr=None, mono=True)
+
+        # read = utils.AudioreadLoader(SAMPLING_RATE=44100)
+        # x, sr = librosa.load(librosa.util.example_audio_file(), duration=5.0)
+
+        # print("x ", x)
+        # print("sr ", sr)
 
         # x, sr = librosa.load(filepath, sr=None, mono=True)  # kaiser_fast
 
@@ -181,7 +214,12 @@ def compute_microphone_features(stream):
         feature_stats('mfcc', f)
 
     except Exception as e:
-        print('{}: {}'.format("5", repr(e)))
+        # print(e)
+        import sys
+        # print('{}: {}'.format("5", repr(e)))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(">>>> ", exc_type, fname, exc_tb.tb_lineno)
 
     return features.to_frame().transpose()
 
@@ -247,10 +285,19 @@ if __name__ == "__main__":
     # "/Users/pratyush/Documents/Uni/cs310/code/fma/input_audio")
 
 
+# liszt = compute_features("input_audio/franz_list.mp3")
+
 # print("LK JSA", liszt)
 
 # y, sr = librosa.load(librosa.util.example_audio_file(), duration=5.0)
 
+# y, sr = librosa.load("/Users/pratyush/Documents/Uni/cs310/code/fma/output.wav")
+# print("y and sr: ", y, sr)
+
+# res = compute_features(
+#     "/Users/pratyush/Documents/Uni/cs310/code/fma/output.wav")
+# print("res ", res['mfcc'])
+
 # print(y, sr)
 
-# print(">>> ", liszt['zcr']['max'])
+# print(">>> ", liszt['zcr']['max'

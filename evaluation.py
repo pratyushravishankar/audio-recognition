@@ -136,22 +136,29 @@ class Evaluation:
         print("starting eval")
 
         # query_df = ft.compute_features(query)
-        query_df = features.iloc[1:2]
+        query = ft.compute_features("input_audio/26 Queensway 4.wav")
+        # query_df = features.iloc[1:2]
 
         brute_force_top_k = self.bruteforce_get(
-            features['mfcc'], query_df['mfcc'])
+            X_train['mfcc'], query['mfcc'])
+
+        print("brute", brute_force_top_k)
 
         lsh_random_proj_top_k = self.lsh.get(
-            query_df['mfcc'], probeType="rand_proj")
+            query['mfcc'], probeType="rand_proj")
+
+        print(lsh_random_proj_top_k)
 
         lsh_probe_step_wise_top_k = self.lsh.get(
-            query_df['mfcc'], probeType="step-wise")
+            query['mfcc'], probeType="step-wise")
 
         # TODO modularise lsh code so acc working
 
         lsh_probe_bit_flip_top_k = self.lsh.get(
-            query_df['mfcc'], probeType="bit-flip")
+            query['mfcc'], probeType="bit-flip", k=2)
         # spectral_top_k =
+
+        # print(bru)
 
         lsh_random_proj_score = self.get_search_quality(
             brute_force_top_k['id'], lsh_random_proj_top_k['id'])
@@ -216,22 +223,31 @@ class Evaluation:
 
     def get_expected_genre_accuracy(self, all_data, inp_vec, probeType):
 
-        matches_list = lsh.get(
-            inp_vec, collision_ratio=0.5, probeType=probeType)
+        matches_list = self.lsh.get(
+            inp_vec, collision_ratio=0.5)
+
+        print("match", matches_list)
 
         ground_truths = tracks['track']['genre_top'].ix[inp_vec.index]
+
+        print("<><><><>")
+
+        print(ground_truths)
 
         ratio_sum = 0
         count = 0
 
         for answer, top_k_genres in zip(ground_truths, matches_list):
 
+            print(answer, "mkljk", top_k_genres)
+
             ratio = self.get_answer_occurence(answer, top_k_genres)
+            print(ratio)
             if not pd.isnull(answer):
                 ratio_sum += ratio
                 count += 1
-                print("answer:", answer, ">> top:", top_k_genres)
-            print("RATOIO ratio ", ratio)
+                # print("answer:", answer, ">> top:", top_k_genres)
+                print("RATOIO ratio ", ratio)
 
         return ratio_sum / count, count
 
@@ -274,10 +290,60 @@ def pca():
     plt.show()
 
 
+def single_search():
+
+    # acc = []
+    # for i in range(10):
+
+    #     X_train, X_test = train_test_split(features, test_size=10)
+    #     lsh = LSH.LSH(30, 15, 140)
+    #     lsh.add(X_train['mfcc'])
+    #     eval = Evaluation(lsh)
+    #     accuracy = eval.get_recall_accuracy(
+    #         X_train['mfcc'], X_test['mfcc'], "rand_proj")
+
+    #     acc.append(accuracy)
+    # print("acc: ", acc)
+
+    acc = []
+    genre = []
+    tables = []
+    for i in range(40, 50, 5):
+
+        X_train, X_test = train_test_split(features, test_size=10)
+        lsh = LSH.LSH(i, 15, 140)
+        lsh.add(X_train['mfcc'])
+        eval = Evaluation(lsh)
+
+        genre_accuracy, count = eval.get_expected_genre_accuracy(
+            X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
+        # accuracy = eval.get_recall_accuracy(
+        #     X_train['mfcc'], X_test['mfcc'], "rand_proj")
+
+        # acc.append(accuracy)
+        genre.append(genre_accuracy)
+        tables.append(i)
+
+    print("acc ", acc)
+    print("genre ", genre)
+    print("tables ", tables)
+
+
+# # res = eval.get_boxplot_rand_projection(X_train['mfcc'])
+
+    # print("TOTAL accuracy ", genre_accuracy, " with no: ", count)
+
+    # genre_acc.append(genre_accuracy)
+    # recall_acc.append(recall_accuracy)
+    # tables.append(i + 1)
+
+
 def grid_search():
 
-    key_sizes = [i for i in range(5, 40, 5)]
-    tables_sizes = [i for i in range(1, 50, 5)]
+    # key_sizes = [i for i in range(5, 40, 5)]
+    # tables_sizes = [i for i in range(1, 50, 5)]
+    key_sizes = [15]
+    tables_sizes = [30]
 
     X_train, X_test = train_test_split(features, test_size=10)
 
@@ -340,40 +406,51 @@ def grid_search():
 # grid_search()
 
 
-X_train, X_test = train_test_split(features, test_size=10)
+# X_train, X_test = train_test_split(features, test_size=10)
 # # get expected genre
 # # get number of correct in top 20
 
 # val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 # print("BEFORE Process usage: ", val)
 
-# lsh = LSH.LSH(1, 16, 140)
-# lsh.add(features['mfcc'])
+# lsh = LSH.LSH(30, 15, 140)
+# lsh.add(X_train['mfcc'])
 
 
-# # eval.eval_top_k_accuracy()
-# # query_df = features.iloc[1:2]
-# # brute_force_top_k = eval.bruteforce_get(
-# #     features['mfcc'], query_df['mfcc'])
+# # # eval.eval_top_k_accuracy()
+# # # query_df = features.iloc[1:2]
+# # # brute_force_top_k = eval.bruteforce_get(
+# # #     features['mfcc'], query_df['mfcc'])
 
 
-# # print("Brute-force : ", brute_force_top_k)
+# # # print("Brute-force : ", brute_force_top_k)
 
 
-# lsh.add(X_test['mfcc'], bitflip=True)
+# # lsh.add(X_test['mfcc'], bitflip=True)
+
+
+# # print("LISTZT ", liszt['mfcc'])
+
+# # lsh = LSH.LSH(17, 15, 140)
 # eval = Evaluation(lsh)
+# # lsh.add(X_train['mfcc'])
+# # eval.eval_top_k_accuracy()
 
-# liszt = ft.compute_features("output.wav")
 
-# print("LSIZT", liszt['mfcc'])
-# res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
+# # # print("LSIZT", liszt['mfcc'])
+# # tic = time.perf_counter()
+# # res_six = lsh.get(liszt['mfcc'], probeType="rand-proj")
+# # toc = time.perf_counter()
+# # print(f"time: {toc - tic:0.4f} seconds")
+
+# # print("res ", res_six)
 
 
 # res = eval.get_recall_accuracy(
-# X_train['mfcc'], X_test['mfcc'], probeType="bit-flip")
+#     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
 
-# liszt = ft.compute_features("./input_audio/franz_list.mp3")
-# res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
+# # liszt = ft.compute_features("./input_audio/franz_list.mp3")
+# # res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
 
 
 # print(res)
@@ -381,9 +458,9 @@ X_train, X_test = train_test_split(features, test_size=10)
 # print(liszt)
 
 # res, count = eval.get_expected_genre_accuracy(
-#     X_train['mfcc'], X_test['mfcc'], probeType="bit-flip")
+# X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
 
-# # res = eval.get_boxplot_rand_projection(X_train['mfcc'])
+# # # res = eval.get_boxplot_rand_projection(X_train['mfcc'])
 
 # print("TOTAL accuracy ", res, " with no: ")
 
@@ -471,5 +548,54 @@ def pca():
     plt.show()
 
 
-# def get accuracy():
-recall_probes()
+def comparison():
+    # basic
+    # key=15, table = 16, collision_ratio=0.6
+
+    tables = []
+    genre_acc = []
+    recall_acc = []
+
+    for i in range(20):
+
+        lsh = LSH.LSH(i + 1, 16, 140)
+        eval = Evaluation(lsh)
+        lsh.add(X_train['mfcc'])
+
+        genre_accuracy, count = eval.get_expected_genre_accuracy(
+            X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
+        recall_accuracy = eval.get_recall_accuracy(
+            X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
+
+
+# # res = eval.get_boxplot_rand_projection(X_train['mfcc'])
+
+        print("TOTAL accuracy ", genre_accuracy, " with no: ", count)
+
+        genre_acc.append(genre_accuracy)
+        recall_acc.append(recall_accuracy)
+        tables.append(i + 1)
+
+    # plt.plot(genre_acc, tables,
+    #          color='red', marker='o', label="Expected-Genre Accuracy")
+    # plt.plot(recall_acc, tables,
+    #          color='blue', marker='x', label="Top-20 Recall Accuracy")
+    # # plt.title(' ', fontsize=14)
+    # plt.xlabel('Accuracy', fontsize=14)
+    # plt.ylabel('No. of Hash Tables', fontsize=14)
+    # plt.grid(True)
+    # plt.legend(loc="upper right")
+    # plt.show()
+
+    # def get accuracy():
+    # recall_probes()
+    # comparison()
+    print(genre_acc)
+    print(recall_acc)
+    print(tables)
+
+
+# comparison()
+
+# grid_search()
+single_search()

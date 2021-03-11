@@ -311,7 +311,6 @@ class HashTable:
         # print(bin_bits)
 #
 
-
     def get_probe_bins(self, bin_indices_bits, search_radius=1):
 
         bin_bits = bin_indices_bits.dot(self.projections) >= 0
@@ -398,6 +397,8 @@ class HashTable:
         else:
             # bins = self.get_keys(inp_vec, False)
             bins = self.get_exact_keys(inp_vec)
+
+            # print("bins: ", bins)
 
             for key in bins:
 
