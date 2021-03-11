@@ -340,15 +340,15 @@ def grid_search():
 # grid_search()
 
 
-# X_train, X_test = train_test_split(features, test_size=10)
+X_train, X_test = train_test_split(features, test_size=10)
 # # get expected genre
 # # get number of correct in top 20
 
 # val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 # print("BEFORE Process usage: ", val)
 
-# lsh = LSH.LSH(1, 25, 140)
-# # lsh.add(features['mfcc'])
+# lsh = LSH.LSH(1, 16, 140)
+# lsh.add(features['mfcc'])
 
 
 # # eval.eval_top_k_accuracy()
@@ -360,7 +360,7 @@ def grid_search():
 # # print("Brute-force : ", brute_force_top_k)
 
 
-# lsh.add(X_train['mfcc'])
+# lsh.add(X_test['mfcc'], bitflip=True)
 # eval = Evaluation(lsh)
 
 # liszt = ft.compute_features("output.wav")
@@ -370,19 +370,22 @@ def grid_search():
 
 
 # res = eval.get_recall_accuracy(
-#     X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
+# X_train['mfcc'], X_test['mfcc'], probeType="bit-flip")
 
 # liszt = ft.compute_features("./input_audio/franz_list.mp3")
 # res_six = lsh.get(liszt['mfcc'], probeType="step-wise")
 
+
+# print(res)
+
 # print(liszt)
 
-# # res, count = eval.get_expected_genre_accuracy(
-# #     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
+# res, count = eval.get_expected_genre_accuracy(
+#     X_train['mfcc'], X_test['mfcc'], probeType="bit-flip")
 
 # # res = eval.get_boxplot_rand_projection(X_train['mfcc'])
 
-# # print("TOTAL accuracy ", res, " with no: ")
+# print("TOTAL accuracy ", res, " with no: ")
 
 # # val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 # # print("Process usage: ", val)
@@ -401,6 +404,12 @@ def grid_search():
 # print(mfccs)
 # mfccs = sklearn.preprocessing.scale(mfccs, axis=1)
 # plt.show()
+
+# def recall_probes():
+
+# lsh_regular = LSH.LSH(10, 16, 140)
+
+# lsh_bit_flip = LSH.LSH(10, 16, 140))
 
 
 def pca():
@@ -428,4 +437,4 @@ def pca():
     plt.show()
 
 
-print(pca())
+# def get accuracy():

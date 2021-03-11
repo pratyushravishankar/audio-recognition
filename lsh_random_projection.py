@@ -55,16 +55,19 @@ class LSH:
             self.hash_tables.append(
                 HashTable(self.hash_size, self.inp_dimensions))
 
-    def add(self, inp_vec):
+    def add(self, inp_vec, bitflip=False):
         for table in self.hash_tables:
-            table.add(inp_vec)
+            table.add(inp_vec, bitflip)
 
             val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
             print("for each process Process usage: ", val)
         val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         print("AFTER FINISHING PROCESSES Process usage: ", val)
 
-    def get(self, inp_vec, collision_ratio=0.6, probeType="step-wise"):
+    def get(self, inp_vec, collision_ratio=0.6, probeType="rand_proj"):
+
+        if probeType != "rand_proj":
+            collision_ratio = 1
 
         # collisions_dict = {}
         queries_coll_list = [{} for i in range(len(inp_vec))]
@@ -196,11 +199,17 @@ class HashTable:
         self.hash_table = dict()
         self.projections = np.random.randn(inp_dimensions, hash_size)
 
-    def add(self, inp_vec):
+    def add(self, inp_vec, bitflip=False):
 
         keys = self.get_exact_keys(inp_vec)
 
+        if bitflip:
+            keys = self.get_keys_cormode(inp_vec, k=2)
+            # print("TOEHR KEY S+", other_keys)
+
         keys_df = keys.to_frame(name="idx")
+
+        print(keys_df)
 
         track_hashes = keys_df.join(tracks['track'])
 
@@ -259,26 +268,33 @@ class HashTable:
         decimal_keys = bin_bits.dot(powers_of_two)
         return decimal_keys
 
-    def get_keys_cormode(self, inp_vec, k=8):
+    def get_keys_cormode(self, inp_vec, k=0):
 
         # print("AT CORMODE!!!!!")
         bin_bits = inp_vec.dot(self.projections)
         probed_keys = []
+        ixs = []
 
-        for row in bin_bits.values:
+        # print(" BIN_BITS", bin_bits)
+
+        for i, row in bin_bits.iterrows():
+
+            # print("R OW ", row)
 
             abs_idxs = [(abs(val), idx) for idx, val in enumerate(row)]
 
             smallest = heapq.nsmallest(k, abs_idxs)
             probed_keys.append(row)
+            ixs.append(i)
             for pair in smallest:
                 idx = pair[1]
                 row_copy = row.copy()
                 row_copy[idx] = row_copy[idx] * -1
                 probed_keys.append(row_copy)
+                ixs.append(i)
 
         probed_projections = pd.DataFrame(
-            np.array(probed_keys), columns=bin_bits.columns)
+            np.array(probed_keys), index=ixs, columns=bin_bits.columns)
         probed_bin_bits = (probed_projections) >= 0
 
         powers_of_two = 1 << np.arange(self.hash_size - 1, -1, step=-1)
@@ -349,7 +365,25 @@ class HashTable:
 
         elif probeType == "bit-flip":
             print("bit-flip!!!")
-            bins = self.get_keys_cormode(inp_vec)
+
+            k = 0
+            bins = self.get_keys_cormode(inp_vec, k=k)
+
+            len_same_query_bins = k + 1
+
+            for i in range(0, len(bins), len_same_query_bins):
+
+                same_queries_matches = []
+                for j in range(len_same_query_bins):
+
+                    idx = i + j
+                    key = bins[idx]
+                    if key in self.hash_table:
+                        same_queries_matches.extend(self.hash_table[key])
+
+                res.append(same_queries_matches)
+            # print("RES bitflip: ", res)
+
             # print("BINS >>> ", bins)
         else:
             # bins = self.get_keys(inp_vec, False)
@@ -360,6 +394,7 @@ class HashTable:
                 if key in self.hash_table:
                     # return self.hash_table[key]
                     res.append(self.hash_table[key])
+
         return res
 
         # print("BINS", bins)
