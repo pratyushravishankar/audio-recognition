@@ -38,7 +38,7 @@ def trainSH(X, nbits):
     R = mx - mn
     maxMode = np.ceil((nbits+1) * R / R.max())
     nModes = int(maxMode.sum() - maxMode.size + 1)
-    print("nModes", nModes)
+    # print("nModes", nModes)
     modes = np.ones((nModes, npca))
     m = 0
     for i in range(npca):
@@ -87,7 +87,7 @@ def compressSH(X, SHparam):
     X = X.dot(SHparam['pc'])
     X = X - SHparam['mn']
     omega0 = np.pi / (SHparam['mx'] - SHparam['mn'])
-    omegas = SHparam['modes'] * omega0.reshape((1, -1))
+    omegas = SHparam['modes'] * omega0.values.reshape((1, -1))
 
     U = np.zeros((Nsamples, nbits))
     for i in range(nbits):
@@ -96,21 +96,72 @@ def compressSH(X, SHparam):
         yi = np.prod(ys, 1)
         U[:, i] = yi
 
+    # print("U: ", U)
+
     b = np.require(U > 0, dtype=np.int)
 
-    print("Uncompact", b)
+    # print("B: ", b)
+
+    # print("Uncompact", b)
     B = compactbit(b)
 
+    # print("compact: ", B)
+
     # return B, U
-    return b
+    return B
+
+
+def hammingDist(B1, B2):
+    """
+    Compute hamming distance between two sets of samples (B1, B2)
+    Dh=hammingDist(B1, B2);
+    Input
+       B1, B2: compact bit vectors. Each datapoint is one row.
+       size(B1) = [ndatapoints1, nwords]
+       size(B2) = [ndatapoints2, nwords]
+       It is faster if ndatapoints1 < ndatapoints2
+    Output
+       Dh = hamming distance.
+       size(Dh) = [ndatapoints1, ndatapoints2]
+    example query
+    Dhamm = hammingDist(B2, B1);
+    this will give the same result than:
+       Dhamm = distMat(U2>0, U1>0).^2;
+    the size of the distance matrix is:
+       size(Dhamm) = [Ntest x Ntraining]
+    """
+
+    if B1.ndim == 1:
+        B1 = B1.reshape((1, -1))
+
+    if B2.ndim == 1:
+        B2 = B2.reshape((1, -1))
+
+    npt1, dim1 = B1.shape
+    npt2, dim2 = B2.shape
+
+    if dim1 != dim2:
+        raise Exception("Dimension not consists: %d, %d" % (dim1, dim2))
+
+    Dh = np.zeros((npt1, npt2), np.uint16)
+
+    """
+    for i in xrange(npt2):
+        Dh[:, i] = BIT_CNT_MAP[np.bitwise_xor(B1, B2[i, :])].sum(1)
+    """
+
+    for i in range(npt1):
+        Dh[i, :] = _nbits[np.bitwise_xor(B1[i, :], B2)].sum(1)
+
+    return Dh
 
 
 def get_hamming(X, query):
 
-    print("prev")
+    # print("prev")
     # print(X)
-    for x in range(100):
-        print(X[x])
+    # for x in range(100):
+    # print(X[x])
 
     # print("query")
     # print(query)
@@ -141,7 +192,9 @@ def get_hamming(X, query):
     #         closest = set()
     #         closest.add(idx)
     # return closest
-    return closest_k[:20]
+
+    print("Spectral hashing same bins no. : ", len(closest_k))
+    return closest_k
 
 
 def compactbit(b):
@@ -152,43 +205,63 @@ def compactbit(b):
     residue = nbits % 8
     if residue != 0:
         B[:, -1] = np.right_shift(B[:, -1], 8 - residue)
-        print(8 - residue)
+        # print(8 - residue)
 
     return B
 
 
-def hammingDist(B1, B2):
-    print(B2.shape)
-    print(B1.shape)
-    print(B1)
+# print("compact example ", compactbit(
+    # np.array([0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1]).reshape((1, -1))))
+
+_nbits = np.array(
+    [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3,
+     4, 2, 3, 3, 4, 3, 4, 4, 5, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4,
+     4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 1, 2, 2, 3, 2,
+     3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5,
+     4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4,
+     5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3,
+     3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2,
+     3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6,
+     4, 5, 5, 6, 5, 6, 6, 7, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5,
+     6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 3, 4, 4, 5, 4, 5,
+     5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6,
+     7, 7, 8], dtype=np.uint8)
+
+# def hammingDist(B1, B2):
+#     print(B2.shape)
+#     print(B1.shape)
+#     print(B1)
 
 
-X = utils.load("data/fma_metadata/features.csv")
-# Xtest = X.iloc[0:1]
-liszt = ft.compute_features("./input_audio/franz_list.mp3")
-tracks = utils.load('data/fma_metadata/tracks.csv')
+# X = utils.load("data/fma_metadata/features.csv")
+# # Xtest = X.iloc[0:1]
+
+# # liszt = X.iloc[25:26]
+# liszt = ft.compute_features("./input_audio/aerosmith.wav")
+# tracks = utils.load('data/fma_metadata/tracks.csv')
 
 
-# print(Xtest)
+# # print(Xtest)
 
-sh = trainSH(X['mfcc'], 50)
+# sh = trainSH(X['mfcc'], 50)
+# print("DONE")
 
-B1 = compressSH(X['mfcc'], sh)
-B2 = compressSH(liszt['mfcc'], sh)
-
-
-# Dhamm = hammingDist(B2, B1)
-
-closest = get_hamming(B1, B2)
-print("closest ", len(closest))
-print("Total ", len(B2))
-print("idxes: ", closest)
+# B1 = compressSH(X['mfcc'], sh)
+# B2 = compressSH(liszt['mfcc'], sh)
 
 
-top_tracks = tracks.iloc[list(closest)]
-top_genres = top_tracks['track']['genre_top']
+# # Dhamm = hammingDist(B2, B1)
 
-print(top_genres[top_genres.notnull()])
+# closest = get_hamming(B1, B2)
+# print("closest ", len(closest))
+# print("Total ", len(B2))
+# print("idxes: ", closest)
+
+
+# top_tracks = tracks.iloc[list(closest)]
+# top_genres = top_tracks['track']['genre_top']
+
+# print(top_genres[top_genres.notnull()])
 
 
 # print("DONE")

@@ -84,7 +84,7 @@ def compute_features(path):
 
         feature_stats('zcr', f)
 
-        print("AFTEER ")
+        # print("AFTEER ")
 
         # cqt = np.abs(librosa.cqt(x, sr=sr, hop_length=512, bins_per_octave=12,
         #                          n_bins=7*12, tuning=None))
@@ -102,9 +102,9 @@ def compute_features(path):
 
         # del cqt
 
-        print("HERE")
+        # print("HERE")
         stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
-        print("stft", stft)
+        # print("stft", stft)
         # assert stft.shape[0] == 1 + 2048 // 2
         # assert np.ceil(len(x)/512) <= stft.shape[1] <= np.ceil(len(x)/512)+1
         # del x

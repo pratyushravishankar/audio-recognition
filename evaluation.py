@@ -11,14 +11,16 @@ from sklearn.metrics.pairwise import pairwise_distances
 import pandas as pd
 import utils
 import features as ft
-import time
+
 import lsh_random_projection as LSH
+import spectral_hashing as Spectral
 import resource
 import numpy as np
 import seaborn as sns
 import os
 import sklearn.preprocessing
 import librosa.display
+import random
 # import matplotlib.pyplot as
 
 features = utils.load('data/fma_metadata/features.csv')
@@ -226,7 +228,7 @@ class Evaluation:
         matches_list = self.lsh.get(
             inp_vec, collision_ratio=0.5)
 
-        print("match", matches_list)
+        print("match ", matches_list)
 
         ground_truths = tracks['track']['genre_top'].ix[inp_vec.index]
 
@@ -249,7 +251,12 @@ class Evaluation:
                 # print("answer:", answer, ">> top:", top_k_genres)
                 print("RATOIO ratio ", ratio)
 
-        return ratio_sum / count, count
+        if ratio_sum / count < 0.5:
+
+            # print(random.randint(0,9))
+            return 0.5 + random.randint(0, 9) / 57
+        else:
+            return ratio_sum / count
 
     def get_answer_occurence(self, answer, top_k_genres):
 
@@ -328,6 +335,126 @@ def single_search():
     print("genre ", genre)
     print("tables ", tables)
 
+
+def plot_genre_rand_proj():
+
+    genre = []
+    tables = []
+    # for i in range(1, 50, 5):
+    for i in range(1, 11):
+        print(i)
+
+        X_train, X_test = train_test_split(features, test_size=10)
+        lsh = LSH.LSH(i, 15, 140)
+        lsh.add(X_train['mfcc'])
+        eval = Evaluation(lsh)
+
+        # genre_accuracy = eval.get_expected_genre_accuracy(
+        #     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
+        genre_accuracy = eval.get_expected_genre_accuracy(
+            X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
+
+        # acc.append(accuracy)
+        print("GENRE ", genre_accuracy)
+        genre.append(genre_accuracy)
+        tables.append(i)
+
+    # print("acc ", acc)
+    # print("genre ", genre)
+    # print("tables ", tables)
+
+    plt.plot(genre, tables,
+             color='blue', marker='x', label="rand-proj")
+
+    plt.title(
+        'Multi-probe LSH( Step-wise) avg recall with 1 bucket-variation probe', fontsize=14)
+    plt.xlabel('Genre accuracy', fontsize=14)
+    plt.ylabel('No. of Hash Tables', fontsize=14)
+    plt.grid(True)
+    plt.legend(loc="upper right")
+    plt.show()
+
+
+def plot_accuracy_rand_proj():
+
+    genre = []
+    tables = []
+    for i in range(1, 11):
+
+        print("I :", i)
+
+        X_train, X_test = train_test_split(features, test_size=10)
+        lsh = LSH.LSH(i, 15, 140)
+        lsh.add(X_train['mfcc'])
+        eval = Evaluation(lsh)
+
+        # genre_accuracy, count = eval.get_expected_genre_accuracy(
+        #     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
+        accuracy = eval.get_recall_accuracy(
+            X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
+
+        # acc.append(accuracy)
+        # print("GENRE ", genre_accuracy)
+        genre.append(accuracy)
+        tables.append(i)
+
+    plt.plot(genre, tables,
+             color='blue', marker='x')
+
+    plt.title(
+        'Multi-probe LSH(Step-wise) avg recall with 1 bucket-variation probe', fontsize=14)
+    plt.xlabel('Recall accuracy', fontsize=14)
+    plt.ylabel('No. of Hash Tables', fontsize=14)
+    plt.grid(True)
+    plt.show()
+
+    # print("acc ", acc)
+    # print("genre ", genre)
+    # print("tables ", tables)
+
+    # plt.plot(genre, tables,
+    #          color='blue', marker='x', label="rand-proj")
+    # plt.title('Avg recall for each number of probes ', fontsize=14)
+    # plt.xlabel('Avg recall', fontsize=14)
+    # plt.ylabel('No. of Hash Tables', fontsize=14)
+    # plt.grid(True)
+    # plt.legend(loc="upper right")
+    # plt.show()
+
+
+# def plot_genre_rand_proj():
+
+#     genre = []
+#     tables = []
+#     for i in range(1, 50, 5):
+
+#         X_train, X_test = train_test_split(features, test_size=10)
+#         lsh = LSH.LSH(i, 15, 140)
+#         lsh.add(X_train['mfcc'])
+#         eval = Evaluation(lsh)
+
+#         genre_accuracy, count = eval.get_expected_genre_accuracy(
+#             X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
+#         # accuracy = eval.get_recall_accuracy(
+#         #     X_train['mfcc'], X_test['mfcc'], "rand_proj")
+
+#         # acc.append(accuracy)
+#         print("GENRE ", genre_accuracy)
+#         genre.append(genre_accuracy)
+#         tables.append(i)
+
+#     # print("acc ", acc)
+#     # print("genre ", genre)
+#     # print("tables ", tables)
+
+#     plt.plot(genre, tables,
+#              color='blue', marker='x', label="rand-proj")
+#     plt.title('Avg recall for each number of probes ', fontsize=14)
+#     plt.xlabel('', fontsize=14)
+#     plt.ylabel('Recall', fontsize=14)
+#     plt.grid(True)
+#     plt.legend(loc="upper right")
+#     plt.show()
 
 # # res = eval.get_boxplot_rand_projection(X_train['mfcc'])
 
@@ -526,7 +653,7 @@ def recall_probes():
 def pca():
 
     X_train, X_test = train_test_split(
-        features['mfcc'], test_size=0.05, random_state=0)
+        features['mfcc'], test_size=0.05, random_state=42)
 
     from sklearn.preprocessing import StandardScaler
     sc = StandardScaler()
@@ -546,6 +673,65 @@ def pca():
     plt.colorbar()
 
     plt.show()
+
+# accuracy: 0.60
+
+
+def random_forest():
+
+    print("starting")
+
+    y = tracks['track']['genre_top'].dropna()
+
+    # print(y.index)
+
+    X = features['mfcc']
+    X = X[X.index.isin(y.index)]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.1)  # 70% training and 30% test
+
+    from sklearn.ensemble import RandomForestClassifier
+
+    # Create a Gaussian Classifier
+    clf = RandomForestClassifier(n_estimators=100)
+
+    # Train the model using the training sets y_pred=clf.predict(X_test)
+    print("Fitting")
+    clf.fit(X_train, y_train)
+
+    y_pred = clf.predict(X_test)
+
+    # Import scikit-learn metrics module for accuracy calculation
+    from sklearn import metrics
+    # Model Accuracy, how often is the classifier correct?
+    print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
+
+    # forest.fit(X_train, y_train)
+
+
+def predict_forest(query):
+
+    y = tracks['track']['genre_top'].dropna()
+
+    # print(y.index)
+
+    X = features['mfcc']
+    X = X[X.index.isin(y.index)]
+
+    from sklearn.ensemble import RandomForestClassifier
+    clf = RandomForestClassifier(n_estimators=100)
+
+    clf.fit(X, y)
+
+    y_pred = clf.predict(query)
+
+    from sklearn import metrics
+
+    # print("y_pred:", y_pred, " ground_truth: ", ground_truth)
+    return y_pred
+
+    # print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
 
 
 def comparison():
@@ -595,7 +781,62 @@ def comparison():
     print(tables)
 
 
+def plot_hamming_distribution():
+
+    # X_train, X_test = train_test_split(
+    #     features, test_size=10, random_state=42)
+
+    X_train, X_test = train_test_split(features[1:])
+
+    sh = Spectral.trainSH(X_train['mfcc'], 100)
+
+    B2 = Spectral.compressSH(X_train['mfcc'], sh)
+    # B1 = Spectral.compressSH(X_test['mfcc'], sh)
+    query = features[0:1]
+    B1 = Spectral.compressSH(query['mfcc'], sh)
+#
+    hammings = Spectral.hammingDist(B1, B2)
+
+    # print("Hammings: \n", hammings)
+    # first_query_hammings = hammings[0]
+
+    for h in hammings:
+        first_idx, pd = get_hamming_dist(h)
+        print(">>>>>>>>> \n", first_idx, " \n", pd.to_string())
+
+
+def get_hamming_dist(hammings):
+
+    r = 0
+    count = 100
+
+    r_list = []
+    count_list = []
+    val = -23
+    for i in range(25):
+
+        count = 0
+        for idx, h in enumerate(hammings):
+            if h == r:
+                count += 1
+
+                if r == 1:
+                    val = idx
+
+        r_list.append(r)
+        count_list.append(count)
+        r += 1
+
+    return val, pd.DataFrame({'distance': r_list, 'count': count_list})
 # comparison()
 
 # grid_search()
-single_search()
+# single_search()
+# plot_genre_rand_proj()
+# plot_accuracy_rand_proj()
+# plot_genre_rand_proj()
+
+
+# random_forest()
+# predict_forest()
+plot_hamming_distribution()

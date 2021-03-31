@@ -60,14 +60,14 @@ class LSH:
             table.add(inp_vec, bitflip)
 
             val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            print("for each process Process usage: ", val)
+            # print("for each process Process usage: ", val)
         val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        print("AFTER FINISHING PROCESSES Process usage: ", val)
+        # print("AFTER FINISHING PROCESSES Process usage: ", val)
 
     def get(self, inp_vec, collision_ratio=0.6, probeType="rand_proj", k=0):
 
-        if probeType != "rand_proj":
-            collision_ratio = 1
+        # if probeType != "rand_proj":
+        #     collision_ratio = 1
 
         # collisions_dict = {}
         queries_coll_list = [{} for i in range(len(inp_vec))]
@@ -343,15 +343,9 @@ class HashTable:
 
         res = []
         if probeType == "step-wise":
-            print("step -wise!!!")
+            # print("step -wise!!!")
             # bins = self.get_keys(inp_vec, True)
             bins = self.get_probe_bins(inp_vec, search_radius=1)
-
-            # print("k bins ", bins)
-
-            # print("bins", bins)
-
-            # print("bins shape", bins.shape)
 
             # change to permutation
             len_same_query_bins = self.hash_size + 1
@@ -370,7 +364,7 @@ class HashTable:
                 # TODO get contentes form each bin
 
         elif probeType == "bit-flip":
-            print("bit-flip!!!")
+            # print("bit-flip!!!")
 
             bins = self.get_keys_cormode(inp_vec, k=k)
 
