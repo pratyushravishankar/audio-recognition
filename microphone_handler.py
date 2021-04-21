@@ -242,6 +242,7 @@ def test(type, song):
 
         k = 20
 
+        # get top two  closests for first query
         first_idx, pd = Eval.get_hamming_dist(results[0])
 
         top_k_queries = []
@@ -256,9 +257,15 @@ def test(type, song):
             # while (query < )
 
         # print("top_K : ", top_k)
+
+        # top 20 closest for first query
         closest = top_k_queries[0]
         print("closest trial : ", closest)
+
+        # last song id which is only 1 hamm dist away from first query
         print("first idx: ", first_idx)
+
+        # dataframe - hamming dist : count
         print("pd : ", pd)
 
         # closest = Spectral.get_hamming(B1, B2)

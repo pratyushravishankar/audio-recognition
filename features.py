@@ -127,6 +127,7 @@ def compute_features(path):
         mel = librosa.feature.melspectrogram(sr=sr, S=stft**2)
         # del stft
         f = librosa.feature.mfcc(S=librosa.power_to_db(mel), n_mfcc=20)
+        print(f.shape)
 
         print(" mfccssss ")
         feature_stats('mfcc', f)

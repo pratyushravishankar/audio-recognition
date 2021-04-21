@@ -64,7 +64,7 @@ class LSH:
         val = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         # print("AFTER FINISHING PROCESSES Process usage: ", val)
 
-    def get(self, inp_vec, collision_ratio=0.6, probeType="rand_proj", k=0):
+    def get(self, inp_vec, collision_ratio=0.1, probeType="rand_proj", k=0):
 
         # if probeType != "rand_proj":
         #     collision_ratio = 1
@@ -75,18 +75,11 @@ class LSH:
 
             table_matches = table.get(inp_vec, probeType, k)
 
-            # print("TABLE MATCHES ", len(table_matches))
-            # for point in table_matches:
-            # print("POINTS ", point, " ", idx)
-
-            #     if point not in collisions_dict:
-            #         collisions_dict[point] = 0
-            #     collisions_dict[point] = collisions_dict[point] + 1
-
+            # matches for each vector in inp_vec
             for idx, query_match in enumerate(table_matches):
 
+                # matches for specific query
                 match_dict = queries_coll_list[idx]
-                # print("match_dict", match_dict)
 
                 for m in query_match:
                     if m not in match_dict:
@@ -97,23 +90,13 @@ class LSH:
 
         for idx, query_dict in enumerate(queries_coll_list):
             for c in query_dict:
-                # print(c, " value ", self.num_tables * collision_ratio)
                 if query_dict[c] >= self.num_tables * collision_ratio:
                     query_matches[idx].append(c)
 
-        # return query_matches
-        # query_match = [ [queries mactching this inp_vec] ]
+        # return self.get_top_k(inp_vec, query_matches)
+        return inp_vec, query_matches
 
-        # query_matches = []
-
-        # for c in collisions_dict:
-        #     if collisions_dict[c] >= self.num_tables * collision_ratio:
-        #         query_matches.append(c)
-        # for m in query_matches:
-            # print(" M M M ", m)
-
-        return self.get_top_k(inp_vec, query_matches)
-
+    # TODO::// populate LSH databse with only non-nulls, so no don't need to filter top k by no-
     def get_top_k(self, inp_vec, candidates, k=20):
 
         if not candidates:
@@ -128,13 +111,7 @@ class LSH:
 
             candidate_list = features.loc[cs]['mfcc']
 
-            # print("CANdidate list", candidate_list)
-            # print(candidate_list)
-
-            # print("candiadates shape", candidate_list.shape)
-            # print("inpvec shape", len(inp_vec.iloc[idx]))
-
-            distance = []
+            dists = []
             if len(candidate_list != 0):
                 # distance = pairwise_distances(
                 # candidate_list, inp_vec.iloc[idx], metric='euclidean').flatten()
@@ -145,17 +122,15 @@ class LSH:
 
                 # print("<ASDJLK", type(inp_vec.  [idx]))
 
-                dists = pairwise_distances(
-                    candidate_list, inp_vec.iloc[idx].values.reshape(1, -1), metric='euclidean')
+                distances = pairwise_distances(
+                    candidate_list, inp_vec.iloc[idx].values.reshape(1, -1))
 
-                # print("DISTANCE ", distance)
-                for d in dists:
-                    distance.extend(d)
+                # print(">> ")
 
-            # print("cs ", cs, "grounds : ",
-                #   ground_truths.shape, " dists: ", distance)
-#
-            nearest_neighbours = pd.DataFrame({'id': cs, 'genre': ground_truths, 'distance': distance}).sort_values(
+                for dist in distances:
+                    dists.extend(dist)
+
+            nearest_neighbours = pd.DataFrame({'id': cs, 'genre': ground_truths, 'distance': dists}).sort_values(
                 'distance').reset_index(drop=True)
 
             candidate_set_labels = nearest_neighbours.sort_values(
@@ -311,6 +286,7 @@ class HashTable:
         # print(bin_bits)
 #
 
+
     def get_probe_bins(self, bin_indices_bits, search_radius=1):
 
         bin_bits = bin_indices_bits.dot(self.projections) >= 0
@@ -446,8 +422,8 @@ class HashTable:
                   " total: ", count, " \n \n \n")
 
 
-# lsh = LSH(1, 25, 140)
-# lsh.add(features['mfcc'])
+lsh = LSH(1, 25, 140)
+lsh.add(features['mfcc'])
 
 # lsh_two = LSH(40, 25, 140)
 # # lsh_two.add(features['mfcc'])

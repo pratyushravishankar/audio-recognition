@@ -10,6 +10,7 @@ import multiprocessing.sharedctypes as sharedctypes
 import os.path
 import ast
 
+root_path = os.path.join(os.path.dirname(__file__), os.path.pardir)
 
 # Number of samples per 30s audio clip.
 # TODO: fix dataset to be constant.
@@ -18,6 +19,61 @@ SAMPLING_RATE = 44100
 
 # Load the environment from the .env file.
 dotenv.load_dotenv(dotenv.find_dotenv())
+
+
+def get_all_features(path, labels, X, Y):
+    music_files = librosa.util.find_files(directory=path, recurse=True)
+    t = tqdm(music_files, desc='Bar desc', leave=True)
+    all_shingles = []
+    all_shingle_ids = []
+    for audio in t:
+        t.set_description("file: {}".format(os.path.basename(audio)))
+        track_id = os.path.splitext(os.path.basename(audio))[0].lstrip('0')
+        # print(os.path.basename(audio))
+
+        sampling_rate = 44100
+
+        wave, fs = librosa.load(audio,
+                                duration=10, sr=sampling_rate)
+
+        stft = np.abs(librosa.stft(wave, n_fft=2048, hop_length=512))
+        mel = librosa.feature.melspectrogram(sr=sampling_rate, S=stft**2)
+        f = librosa.feature.mfcc(S=librosa.power_to_db(mel), n_mfcc=20)
+        print(f.shape)
+        audios_shingles = getShingles(f)
+        print(len(audios_shingles))
+        all_shingles.extend(audios_shingles)
+        shingle_ids = get_shingle_ids(len(audios_shingles), track_id)
+        all_shingle_ids.extend(shingle_ids)
+        break
+
+    features = pd.DataFrame(index=all_shingle_ids, columns=[
+                            str(i) for i in range(400)], data=all_shingles)
+    print("DONE")
+    features.to_csv("precomputed.csv")
+
+
+def get_shingle_ids(shingle_count, track_id):
+
+    # shingle_ids = [track_id.join(i) for i in range(shingle_count)]
+    shingle_ids = []
+
+    for i in range(shingle_count):
+        string = str(track_id) + "_" + str(i)
+        shingle_ids.append(string)
+    return shingle_ids
+
+
+def getShingles(f, num_to_concat=20):
+
+    total_shingles = int(f.shape[1] / num_to_concat)
+    shingles_list = []
+    for i in range(total_shingles):
+        shingle = []
+        for j in range(num_to_concat):
+            shingle.extend(f[:, i * num_to_concat + j])
+        shingles_list.append(shingle)
+    return shingles_list
 
 
 class FreeMusicArchive:
@@ -227,6 +283,24 @@ def load(filepath):
             tracks[column] = tracks[column].astype('category')
 
         return tracks
+
+
+def get_all_music(path, labels, X, Y):
+    print("Getting music files and converting it into spectrogram ...")
+    music_files = librosa.util.find_files(directory=path, recurse=True)
+    t = tqdm(music_files, desc='Bar desc', leave=True)
+    if not os.path.exists(os.path.join(os.path.dirname(__file__), os.path.pardir, "tmp")):
+        os.makedirs(os.path.join(os.path.dirname(
+            __file__), os.path.pardir, "tmp"))
+    for audio in t:
+        t.set_description("file: {}".format(os.path.basename(audio)))
+        track_id = os.path.splitext(os.path.basename(audio))[0].lstrip('0')
+        genre = labels.loc[labels['track_id']
+                           == int(track_id)]['genre'].values[0]
+        spectrogram(audio, int(track_id), genre, X, Y)
+        t.refresh()
+    print("Spectrogram created")
+    shutil.rmtree(os.path.join(root_path, "tmp"))
 
 
 def get_audio_path(audio_dir, track_id):

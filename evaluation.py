@@ -181,93 +181,97 @@ class Evaluation:
 
         # spectral_top_k_score =
 
-    def get_search_quality(self, ys, Ys):
 
-        k = len(ys)
-        if k == 0:
-            return 0
+def get_search_quality(ys, Ys):
 
-        # print("STRAT")
+    k = len(ys)
+    if k == 0:
+        return 0
 
-        count = 0
-        for Y in Ys:
-            if (ys == Y).any():
+    # print("STRAT")
 
-                # print("FOUND ", Y)
-                count = count + 1
+    count = 0
+    for Y in Ys:
+        if (ys == Y).any():
 
-        return count / k
+            # print("FOUND ", Y)
+            count = count + 1
 
-    def bruteforce_get(self, features, inp_vec, k=20):
+    return count / k
 
-        query_top_ks = [None for i in range(len(inp_vec))]
 
-        for idx in range(len(inp_vec)):
+def bruteforce_get(features, inp_vec, k=20):
 
-            distance = pairwise_distances(
-                features, inp_vec.iloc[idx].values.reshape(1, -1), metric='euclidean').flatten()
+    query_top_ks = [None for i in range(len(inp_vec))]
 
-            nearest_neighbours = pd.DataFrame({'id': features.index, 'genre': tracks['track']['genre_top'].ix[features.index], 'distance': distance}).sort_values(
-                'distance').reset_index(drop=True)
+    for idx in range(len(inp_vec)):
 
-            # print("nearest negih")
-            # print(nearest_neighbours.head())
+        distance = pairwise_distances(
+            features, inp_vec.iloc[idx].values.reshape(1, -1), metric='euclidean').flatten()
 
-            candidate_set_labels = nearest_neighbours.sort_values(
-                by=['distance'], ascending=True)
+        nearest_neighbours = pd.DataFrame({'id': features.index, 'genre': tracks['track']['genre_top'].ix[features.index], 'distance': distance}).sort_values(
+            'distance').reset_index(drop=True)
 
-            non_null = candidate_set_labels[candidate_set_labels['genre'].notnull(
-            )]
+        # print("nearest negih")
+        # print(nearest_neighbours.head())
 
-            query_top_ks[idx] = non_null.iloc[:k]
+        candidate_set_labels = nearest_neighbours.sort_values(
+            by=['distance'], ascending=True)
 
-        return query_top_ks
+        non_null = candidate_set_labels[candidate_set_labels['genre'].notnull(
+        )]
 
-    def get_expected_genre_accuracy(self, all_data, inp_vec, probeType):
+        query_top_ks[idx] = non_null.iloc[:k]
 
-        matches_list = self.lsh.get(
-            inp_vec, collision_ratio=0.5)
+    return query_top_ks
 
-        print("match ", matches_list)
 
-        ground_truths = tracks['track']['genre_top'].ix[inp_vec.index]
+def get_expected_genre_accuracy(eval, all_data, inp_vec, probeType):
 
-        print("<><><><>")
+    matches_list = eval.lsh.get(
+        inp_vec, collision_ratio=0.5)
 
-        print(ground_truths)
+    print("match ", matches_list)
 
-        ratio_sum = 0
-        count = 0
+    ground_truths = tracks['track']['genre_top'].ix[inp_vec.index]
 
-        for answer, top_k_genres in zip(ground_truths, matches_list):
+    print("<><><><>")
 
-            print(answer, "mkljk", top_k_genres)
+    print(ground_truths)
 
-            ratio = self.get_answer_occurence(answer, top_k_genres)
-            print(ratio)
-            if not pd.isnull(answer):
-                ratio_sum += ratio
-                count += 1
-                # print("answer:", answer, ">> top:", top_k_genres)
-                print("RATOIO ratio ", ratio)
+    ratio_sum = 0
+    count = 0
 
-        if ratio_sum / count < 0.5:
+    for answer, top_k_genres in zip(ground_truths, matches_list):
 
-            # print(random.randint(0,9))
-            return 0.5 + random.randint(0, 9) / 57
-        else:
-            return ratio_sum / count
+        print(answer, "mkljk", top_k_genres)
 
-    def get_answer_occurence(self, answer, top_k_genres):
+        ratio = get_answer_occurence(answer, top_k_genres)
+        print(ratio)
+        if not pd.isnull(answer):
+            ratio_sum += ratio
+            count += 1
+            # print("answer:", answer, ">> top:", top_k_genres)
+            print("RATOIO ratio ", ratio)
 
-        if len(top_k_genres) == 0:
-            return 0
+    # if ratio_sum / count < 0.5:
 
-        count = 0
-        for genre in top_k_genres['genre']:
-            if answer == genre:
-                count += 1
-        return count / len(top_k_genres)
+    #     # print(random.randint(0,9))
+    #     return 0.5 + random.randint(0, 9) / 57
+    # else:
+    return ratio_sum / count
+
+
+def get_answer_occurence(answer, top_k_genres):
+
+    if len(top_k_genres) == 0:
+        return 0
+
+    count = 0
+    for genre in top_k_genres['genre']:
+        if answer == genre:
+            count += 1
+    return count / len(top_k_genres)
 
 
 # def get_accuraccy_over_hashtables
@@ -341,18 +345,18 @@ def plot_genre_rand_proj():
     genre = []
     tables = []
     # for i in range(1, 50, 5):
-    for i in range(1, 11):
+    for i in range(1, 20):
         print(i)
 
         X_train, X_test = train_test_split(features, test_size=10)
-        lsh = LSH.LSH(i, 15, 140)
+        lsh = LSH.LSH(40, i * 5, 140)
         lsh.add(X_train['mfcc'])
         eval = Evaluation(lsh)
 
+        genre_accuracy = get_expected_genre_accuracy(eval,
+                                                     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
         # genre_accuracy = eval.get_expected_genre_accuracy(
-        #     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
-        genre_accuracy = eval.get_expected_genre_accuracy(
-            X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
+        #     X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
 
         # acc.append(accuracy)
         print("GENRE ", genre_accuracy)
@@ -363,7 +367,7 @@ def plot_genre_rand_proj():
     # print("genre ", genre)
     # print("tables ", tables)
 
-    plt.plot(genre, tables,
+    plt.plot(tables, genre,
              color='blue', marker='x', label="rand-proj")
 
     plt.title(
@@ -391,7 +395,7 @@ def plot_accuracy_rand_proj():
         # genre_accuracy, count = eval.get_expected_genre_accuracy(
         #     X_train['mfcc'], X_test['mfcc'], probeType="rand-proj")
         accuracy = eval.get_recall_accuracy(
-            X_train['mfcc'], X_test['mfcc'], probeType="step-wise")
+            X_train['mfcc'], X_test['mfcc'])
 
         # acc.append(accuracy)
         # print("GENRE ", genre_accuracy)
@@ -786,14 +790,16 @@ def plot_hamming_distribution():
     # X_train, X_test = train_test_split(
     #     features, test_size=10, random_state=42)
 
-    X_train, X_test = train_test_split(features[1:])
+    # X_train, X_test = train_test_split(features[1:])
+    X_test = features[5:6]
+    X_train = features
 
-    sh = Spectral.trainSH(X_train['mfcc'], 100)
+    sh = Spectral.trainSH(X_train['mfcc'], 200)
 
     B2 = Spectral.compressSH(X_train['mfcc'], sh)
     # B1 = Spectral.compressSH(X_test['mfcc'], sh)
     query = features[0:1]
-    B1 = Spectral.compressSH(query['mfcc'], sh)
+    B1 = Spectral.compressSH(X_test['mfcc'], sh)
 #
     hammings = Spectral.hammingDist(B1, B2)
 
@@ -820,7 +826,8 @@ def get_hamming_dist(hammings):
             if h == r:
                 count += 1
 
-                if r == 1:
+                if r == 0:
+                    print("EXACT SPECTRAL: ", idx)
                     val = idx
 
         r_list.append(r)
@@ -830,13 +837,146 @@ def get_hamming_dist(hammings):
     return val, pd.DataFrame({'distance': r_list, 'count': count_list})
 # comparison()
 
-# grid_search()
-# single_search()
-# plot_genre_rand_proj()
-# plot_accuracy_rand_proj()
-# plot_genre_rand_proj()
+
+# working spectral hashing genre accuracy
+def get_spectral_genre_accuracy(k=20):
+
+    X_train, X_test = train_test_split(
+        features, test_size=20, random_state=42)
+
+    sh = Spectral.trainSH(X_train['mfcc'], 200)
+
+    B2 = Spectral.compressSH(X_train['mfcc'], sh)
+    B1 = Spectral.compressSH(X_test['mfcc'], sh)
+
+    query_results = Spectral.hammingDist(B1, B2)
+
+    # top_k_ids = []
+    the_list = []
+
+    avg_recall = 0
+    count = 0
+
+    ground_truths = tracks['track']['genre_top'].ix[X_test.index]
+
+    brute_forces = bruteforce_get(X_train, X_test)
+
+    for idx, query in enumerate(query_results):
+        smallest = sorted(range(len(query)), key=lambda k: query[k])
+
+        # q = X_test.iloc[idx]
+        # top_k_ids = smallest[:k]
+
+        # the_list.append(top_k_ids)
+
+        # print("top k ids ", top_k_ids)
+
+        sorted_ids = pd.DataFrame(
+            {'id': smallest, 'genre': tracks['track']['genre_top'].iloc[smallest]}).reset_index(drop=True)
+
+        top_ks_genres = sorted_ids[sorted_ids['genre'].notnull()][:20]
+
+        ground_truth = ground_truths.iloc[idx]
+
+        occ = get_answer_occurence(ground_truth, top_ks_genres)
+
+        print("ground truth : ", ground_truth)
+
+        print("occ ", occ)
+
+        # print("non nulls: ", top_ks_genres)
+        # print("brutey ", brute_force)
+
+    # print("actual genre: ", tracks['track']['genre_top'].iloc[query.index])
+
+    #     print("RATIO >>> ", recall)
+
+    #     avg_recall = avg_recall + recall
+    #     count = count + 1
+
+    # print(avg_recall / count)
+
+    # print("the list ", the_list)
 
 
-# random_forest()
-# predict_forest()
-plot_hamming_distribution()
+# working spectral hashing accuracy
+def plot_spectral_accuracy(k=20):
+
+    X_train, X_test = train_test_split(
+        features, test_size=5, random_state=42)
+
+    sh = Spectral.trainSH(X_train['mfcc'], 200)
+
+    B2 = Spectral.compressSH(X_train['mfcc'], sh)
+    B1 = Spectral.compressSH(X_test['mfcc'], sh)
+
+    query_results = Spectral.hammingDist(B1, B2)
+
+    # top_k_ids = []
+    the_list = []
+
+    avg_recall = 0
+    count = 0
+
+    brute_forces = bruteforce_get(X_train, X_test)
+
+    for idx, query in enumerate(query_results):
+        smallest = sorted(range(len(query)), key=lambda k: query[k])
+
+        # q = X_test.iloc[idx]
+        # top_k_ids = smallest[:k]
+
+        # the_list.append(top_k_ids)
+
+        # print("top k ids ", top_k_ids)
+
+        sorted_ids = pd.DataFrame(
+            {'id': smallest, 'genre': tracks['track']['genre_top'].iloc[smallest]}).reset_index(drop=True)
+
+        top_ks_genres = sorted_ids[sorted_ids['genre'].notnull()][:20]
+
+        brute_force = brute_forces[idx]
+
+        print("non nulls: ", top_ks_genres)
+        print("brutey ", brute_force)
+        recall = get_search_quality(
+            top_ks_genres['id'], brute_force['id'])
+
+    # print("actual genre: ", tracks['track']['genre_top'].iloc[query.index])
+
+        print("RATIO >>> ", recall)
+
+        avg_recall = avg_recall + recall
+        count = count + 1
+
+    print(avg_recall / count)
+
+    print("the list ", the_list)
+
+    # for ids in top_k_ids:
+    # get genres
+    # determine top genre
+
+
+def mfcc_test():
+    # query = ft.compute_features("input_audio/liszt.wav")
+    query = ft.compute_features("input_audio/kate_nash_10s.wav")
+    print("df shape", query['mfcc'].shape)
+
+    # grid_search()
+    # single_search()
+    # plot_genre_rand_proj()
+    # plot_accuracy_rand_proj()
+    # plot_genre_rand_proj()
+    # random_forest()
+    # predict_forest()
+
+
+# **recent**
+# plot_hamming_distribution()
+
+
+# plot_spectral_accuracy()
+# get_spectral_genre_accuracy()
+# mfcc_test()
+plot_genre_rand_proj()

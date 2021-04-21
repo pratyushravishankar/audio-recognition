@@ -1,72 +1,135 @@
-#pip==9.0.1
-#setuptools==38.2.4  # old for MarkupSafe 1.0 (28.8.0 is installed with py 3.6)
-numpy==1.12.1  # 1.12.0
-pandas==0.19.2
-matplotlib==2.0.0
-seaborn==0.7.1
-scikit-learn==0.18.1
-tensorflow-gpu==1.0.1  # 1.0.0
-Keras==1.2.2  # 2.0.2 / 2.0.3
-librosa==0.5.0
-audioread==2.1.4
-mutagen==1.39  # 1.39.dev0
-pydub==0.18.0
-#exiftool  # Only considered at some point.
-#eyed3  # Only considered at some point.
-requests==2.13.0
-pydot==1.2.3
-tqdm==4.11.2
-python-dotenv==0.6.3  # 0.6.4
-
-# Dependencies of the above.
-certifi==2017.11.5
-click==6.7
+alabaster==0.7.12
+alembic==1.4.3
+appdirs==1.4.4
+appnope==0.1.2
+argon2-cffi==20.1.0
+async-generator==1.10
+attrs==20.3.0
+audioread==2.1.9
+autopep8==1.5.4
+Babel==2.9.0
+backcall==0.2.0
+bleach==3.3.0
+cached-property==1.5.2
+certifi==2020.12.5
+certipy==0.1.3
+cffi==1.14.4
+chardet==4.0.0
+cryptography==3.3.1
 cycler==0.10.0
-Cython==0.25.2
-decorator==4.0.11  # 4.1.2
-joblib==0.11
-protobuf==3.2.0
-pyparsing==2.2.0
-python-dateutil==2.6.0
-pytz==2017.2  # 2016.10 / 2017.3
-PyYAML==3.12
-resampy==0.1.5
-scipy==0.19.0  # 0.18.1
-six==1.10.0
-Theano==0.9.0  # 0.8.2
-
-# Jupyter notebook and its dependencies.
-notebook==5.0.0  # 4.4.1
-ipywidgets==6.0.0
-bleach==2.0.0  # 1.5.0
-entrypoints==0.2.2
-html5lib==0.999999999  # 0.9999999
-ipykernel==4.6.0  # 4.5.2 / 4.6.1
-ipython==5.3.0
-ipython-genutils==0.2.0  # 0.1.0
-Jinja2==2.9.6  # 2.9.5 / 2.10
-jsonschema==2.6.0
-jupyter-client==5.0.0  # 5.0.1
-jupyter-core==4.3.0
-MarkupSafe==0.23  # 1.0 (requires an old setuptools for `from setuptools import Feature`)
-mistune==0.7.4  # 0.7.3
-nbconvert==5.1.1
-nbformat==4.3.0
-packaging==16.8
-pandocfilters==1.4.1
-pexpect==4.2.1
-pickleshare==0.7.4
-prompt-toolkit==1.0.14  # 1.0.13
-ptyprocess==0.5.1
-Pygments==2.2.0
-pyparsing==2.2.0
-pyzmq==16.0.2
-simplegeneric==0.8.1
-terminado==0.6
-testpath==0.3
-tornado==4.4.3  # 4.4.2
-traitlets==4.3.2
-wcwidth==0.1.7
+decorator==4.4.2
+defusedxml==0.7.1
+distlib==0.3.1
+docutils==0.16
+entrypoints==0.3
+filelock==3.0.12
+h5py==3.1.0
+idna==2.10
+imagesize==1.2.0
+importlib-metadata==3.4.0
+importlib-resources==5.0.0
+ipykernel==5.4.3
+ipyparallel==6.3.0
+ipython==7.16.1
+ipython-genutils==0.2.0
+ipywidgets==7.6.3
+jedi==0.18.0
+Jinja2==2.11.2
+joblib==1.0.0
+jsonschema==3.2.0
+jupyter==1.0.0
+jupyter-client==6.1.11
+jupyter-console==6.4.0
+jupyter-core==4.7.0
+jupyter-telemetry==0.1.0
+jupyterhub==1.3.0
+jupyterlab-pygments==0.1.2
+jupyterlab-widgets==1.0.0
+Keras==2.4.3
+kiwisolver==1.3.1
+librosa==0.8.0
+llvmlite==0.35.0
+Mako==1.1.4
+MarkupSafe==1.1.1
+matplotlib==3.3.3
+mistune==0.8.4
+mutagen==1.45.1
+nbclient==0.5.3
+nbconvert==6.0.7
+nbformat==5.1.3
+nest-asyncio==1.5.1
+nose==1.3.7
+notebook==6.3.0
+numba==0.52.0
+numpy==1.19.0
+oauthlib==3.1.0
+packaging==20.8
+pamela==1.0.0
+pandas==0.25.3
+pandocfilters==1.4.3
+parso==0.8.1
+pbr==5.5.1
+pexpect==4.8.0
+pickleshare==0.7.5
+Pillow==8.1.0
+pip-autoremove==0.9.1
+pooch==1.3.0
+prometheus-client==0.9.0
+prompt-toolkit==3.0.3
+ptyprocess==0.7.0
+PyAudio==0.2.11
+pycairo==1.20.0
+pycodestyle==2.6.0
+pycparser==2.20
+pydot==1.4.1
+pydub==0.24.1
+Pygments==2.7.4
+PyGObject==3.38.0
+pyOpenSSL==20.0.1
+pyparsing==2.4.7
+pyrsistent==0.17.3
+python-dateutil==2.8.1
+python-dotenv==0.15.0
+python-editor==1.0.4
+python-json-logger==2.0.1
+pytz==2020.5
+PyYAML==5.3.1
+pyzmq==21.0.1
+qtconsole==5.0.3
+QtPy==1.9.0
+requests==2.25.1
+resampy==0.2.2
+ruamel.yaml==0.16.12
+ruamel.yaml.clib==0.2.2
+scikit-learn==0.24.0
+scipy==1.5.4
+seaborn==0.11.1
+Send2Trash==1.5.0
+six==1.15.0
+snowballstemmer==2.0.0
+SoundFile==0.10.3.post1
+Sphinx==3.4.3
+sphinxcontrib-applehelp==1.0.2
+sphinxcontrib-devhelp==1.0.2
+sphinxcontrib-htmlhelp==1.0.3
+sphinxcontrib-jsmath==1.0.1
+sphinxcontrib-qthelp==1.0.3
+sphinxcontrib-serializinghtml==1.1.4
+SQLAlchemy==1.3.22
+stevedore==3.3.0
+terminado==0.9.4
+testpath==0.4.4
+threadpoolctl==2.1.0
+toml==0.10.2
+tornado==6.1
+tqdm==4.56.0
+traitlets==4.3.3
+typing-extensions==3.7.4.3
+urllib3==1.26.2
+virtualenv==20.3.1
+virtualenv-clone==0.5.4
+virtualenvwrapper==4.8.4
+wcwidth==0.2.5
 webencodings==0.5.1
-widgetsnbextension==2.0.0
-
+widgetsnbextension==3.5.1
+zipp==3.4.0
